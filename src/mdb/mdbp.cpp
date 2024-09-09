@@ -69,7 +69,7 @@ void MDBP::branch(int dep) {
 	bool flagPivot = true;
 	for (int s = 0; s <= 1; ++s) {
 		for (int v : C[s]) {
-			// if (nnbS(s, v) > 0 && (cntNnbS += nnbS(s, v)) > k-numNnbS) {
+			// if ((cntNnbS += (nnbS(s, v) > 0)) > k-numNnbS) {
 			// 	flagPivot = false;
 			// 	break;
 			// }

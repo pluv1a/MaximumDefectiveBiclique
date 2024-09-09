@@ -61,7 +61,7 @@ void MDBP::branch(int dep) {
 	for (int v : C[s]) numEdgesSub += degSub(s, v);
 	if (numEdgesSub <= numEdgesSs) return;
 
-	if ((flags & FLAG_UPPERBOUND) && !upperbound()) { ++numUbPruned; return; }
+	if (!upperbound()) { ++numUbPruned; return; }
 
 	++numBranches;
 

@@ -525,7 +525,7 @@ bool MDB::upperbound() {
 
 bool MDB::upperbound(int uSide, int u) {
 
-	if (!(flags & FLAG_UPPERBOUND)) return true;
+	// if (!(flags & FLAG_UPPERBOUND)) return true;
 
 	static std::vector<int> cn;
 

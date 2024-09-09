@@ -43,7 +43,7 @@ void MDBB::branch(int dep) {
 	for (int v : C[s]) numEdgesSub += degSub(s, v);
 	if (numEdgesSub <= numEdgesSs) return;
 
-	if (!upperbound()) { ++numUbPruned; return; }
+	if ((flags & FLAG_UPPERBOUND) && !upperbound()) { ++numUbPruned; return; }
 
 	++numBranches;
 	++numBipartite;

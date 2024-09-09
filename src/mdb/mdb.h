@@ -25,6 +25,7 @@ protected:
 	VertexSet Ss[2], S[2], C[2], X[2];
 	int k, numNnbS, numNnbSs, lb[2], flags;
 	std::vector<int> degS[2], degC[2];
+	// std::vector<CuckooHash> coexist[2];
 	BiGraph G;
 	int branchTime, reductionTime, numBranches, numUbPruned, numPivoting, numBipartite;
 
@@ -50,13 +51,12 @@ protected:
 
 	void russianDoll();
 	void searchAll();
+
+	// void cnExclusion(BiGraph &g, int q[2], int k);
 	
 	BakPos update(int uSide, int u);
 	BakPos minus(int uSide, int u);
 	void restore(BakPos &pos);
-	// void rearrange(BakPos &pos);
-	// void add(VertexSet V[2], std::vector<int> degV[2], int uSide, int u);
-	// void sub(VertexSet V[2], std::vector<int> degV[2], int uSide, int u);
 
 	inline void addS(int s, int u) { 
 		S[s].push(u);

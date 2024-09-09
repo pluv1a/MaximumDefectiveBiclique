@@ -11,12 +11,12 @@ using namespace logging;
 
 // #define PIVOTING_V2
 
-// void mdb::cnexclusion(bigraph &g, int q[2], int k) {
+// void MDB::cnExclusion(BiGraph &g, int q[2], int k) {
 // 	static std::vector<int> cn;
 // 	if (cn.size() < std::max(g.n[0], g.n[1])) cn.resize(std::max(g.n[0], g.n[1]));
 
 // 	for (int s = 0; s <= 1; ++s) {
-// 		for (int u : g.v[s]) {  
+// 		for (int u : g.V[s]) {  
 // 			coexist[s][u].clear();
 // 			for (int v : g.nbr[s][u])
 // 				for (int w : g.nbr[s^1][v])
@@ -526,6 +526,12 @@ bool MDB::upperbound() {
 bool MDB::upperbound(int uSide, int u) {
 
 	// if (!(flags & FLAG_UPPERBOUND)) return true;
+	return true;
+
+	for (int s = 0; s <= 1; ++s) {
+		for (int u : S[s]) if (degSub(s, u) < lb[s^1]-k)
+			return false;
+	}
 
 	static std::vector<int> cn;
 
@@ -542,14 +548,6 @@ bool MDB::upperbound(int uSide, int u) {
 	return true;
 }
 
-
-// bool MDB::upperbound() {
-// 	for (int s = 0; s <= 1; ++s) {
-// 		for (int u : S[s]) if (degSub(s, u) < lb[s^1]-k)
-// 			return false;
-// 	}
-// 	return true;
-// }
 
 MDB::BakPos MDB::update(int uSide, int u) {
 	using namespace traversal;
@@ -614,13 +612,11 @@ MDB::BakPos MDB::update(int uSide, int u) {
 				++cn[w];
 		}
 	}
+	
 
 	for (int w : C[uSide]) if (/*w != u && */cn[w] < lb[uSide^1]-k+numNnbS)
 		subC(uSide, w);
 
-	//pos.backup(C);
-
-	//moveC2S(uSide, u);
 	for (int s = 0; s <= 1; ++s) {
 		for (int v : reverse(C[s])) if (nnbSub(s, v) == 0) {
 			moveC2S(s, v);

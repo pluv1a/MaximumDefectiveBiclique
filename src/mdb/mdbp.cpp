@@ -84,7 +84,7 @@ void MDBP::branch(int dep) {
 				uSide = s;
 			}
 		}	
-		if (!flagPivot) break;
+		// if (!flagPivot) break;
 	}
 
 	

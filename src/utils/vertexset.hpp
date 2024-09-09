@@ -9,7 +9,7 @@
 #include <sstream>
 
 class VertexSet {
-	int lp, rp, capacity;
+	int lp, rp;
 	std::vector<int> s, pos;
 
   void swapByPos(int i, int j) {
@@ -18,15 +18,17 @@ class VertexSet {
 		pos[s[j]] = j;
 	}
 
+	int capacity() const {
+		return s.size();
+	}
+
 public:
 	VertexSet(int n) {
-		capacity = 0;
 		reserve(n);
 		clear();
 	}
 
 	VertexSet() {
-		capacity = 0;
 		clear();
 	}
  
@@ -35,25 +37,28 @@ public:
   }
 
 	void reserve(int new_capacity) {
-		if (capacity >= new_capacity) return;
+		int old_capacity = capacity();
+		if (old_capacity >= new_capacity) return;
 		s.resize(new_capacity);
 		pos.resize(new_capacity);
-		for (int i = capacity; i < new_capacity; ++i)
+		for (int i = old_capacity; i < new_capacity; ++i)
 			s[i] = pos[i] = i;
-		capacity = new_capacity;
+		// capacity = new_capacity;
 	}
 
 	void push(int v) {
-		if (v >= capacity) reserve(v << 1);
+		if (v >= capacity()) reserve((v+1) << 1);
 		if (pos[v] < lp) pushFront(v);
 		else if (pos[v] >= rp) pushBack(v);
 	}
 
 	void pushFront(int v) {
+		if (v >= capacity()) reserve((v+1) << 1);
 		if (pos[v] < lp) swapByPos(pos[v], --lp);
 	}
 
 	void pushBack(int v) {
+		if (v >= capacity()) reserve((v+1) << 1);
 		if (pos[v] >= rp) swapByPos(pos[v], rp++);
 	}
 
@@ -71,7 +76,7 @@ public:
 
 
 	bool inside(int v) const {
-		return v < capacity && pos[v] >= lp && pos[v] < rp;
+		return v < capacity() && pos[v] >= lp && pos[v] < rp;
 	}
 
   int size() const {
@@ -87,7 +92,15 @@ public:
 	}
 
 	void restore(int pos) {
+		restoreFront(pos);
+	}
+
+	void restoreFront(int pos) {
 		lp = pos;
+	}
+
+	void restoreBack(int pos) {
+		rp = pos;
 	}
 
 	void clear() {
@@ -102,13 +115,41 @@ public:
 		return pos[v];
 	}
 
-	const int* begin() const {
-		return s.data() + lp;
+	/* Iterators */
+
+	std::vector<int>::iterator begin() {
+		return s.begin() + lp;
 	}
 
-	const int* end() const {
-		return s.data() + rp;
+	std::vector<int>::const_iterator begin() const {
+		return s.begin() + lp;
 	}
+
+	std::vector<int>::iterator end() {
+		return s.begin() + rp;
+	}
+
+	std::vector<int>::const_iterator end() const {
+		return s.begin() + rp;
+	}
+
+	std::vector<int>::reverse_iterator rbegin() {
+		return std::vector<int>::reverse_iterator(s.begin() + rp);
+	}
+
+	std::vector<int>::const_reverse_iterator rbegin() const {
+		return std::vector<int>::const_reverse_iterator(s.begin() + rp);
+	}
+
+	std::vector<int>::reverse_iterator rend() {
+		return std::vector<int>::reverse_iterator(s.begin() + lp);
+	}
+
+	std::vector<int>::const_reverse_iterator rend() const {
+		return std::vector<int>::const_reverse_iterator(s.begin() + lp);
+	}
+
+	/* Operators */
 
 	VertexSet& operator += (VertexSet &V) {
 		for (int v : V)
@@ -117,8 +158,9 @@ public:
 	}
 
 	friend VertexSet operator + (VertexSet a, VertexSet b) {
-		VertexSet c = a.capacity > b.capacity ? std::move(a) : std::move(b);
-		if (a.capacity > b.capacity) {
+		int cap_a = a.capacity(), cap_b = b.capacity();
+		VertexSet c = cap_a > cap_b ? std::move(a) : std::move(b);
+		if (cap_a > cap_b) {
 			for (int v : b)
 				c.push(v);
 		}
@@ -128,6 +170,8 @@ public:
 		}
 		return c;
 	}
+
+	/* Print */
 
 	std::string toString(const std::string &sep = ",") {
 		std::stringstream ss;
@@ -139,6 +183,41 @@ public:
 		ss << "}";
 		return ss.str();
 	}
+
+	// class FrontIterator {
+	// 	int p;
+	// 	VertexSet &V;
+	// public:
+	// 	FrontIterator(VertexSet &VS, int pos): V(VS), p(pos) {}
+	// 	const int* begin() const {
+	// 		return V.s.data() + p;
+	// 	}
+	// 	const int* end() const {
+	// 		return V.begin();
+	// 	}
+	// };
+
+	// FrontIterator front(int pos) {
+	// 	return FrontIterator(*this, pos);
+	// }
+
+	// class BackIterator {
+	// 	int p;
+	// 	VertexSet &V;
+	// public:
+	// 	BackIterator(VertexSet &VS, int pos): V(VS), p(pos) {}
+	// 	const int* begin() const {
+	// 		return V.end();
+	// 	}
+	// 	const int* end() const {
+	// 		return V.s.data()+p;
+	// 	}
+	// };
+	
+	// BackIterator back(int pos) {
+	// 	return BackIterator(*this, pos);
+	// }
+
 
 };
 

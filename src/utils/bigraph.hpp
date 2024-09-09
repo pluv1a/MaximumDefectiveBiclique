@@ -13,37 +13,54 @@
 
 struct BiGraph {
 	VertexSet V[2];
-	int n[2], m, maxDeg[2], capacity[2];
+	int n[2], m, maxDeg[2]; //, capacity[2];
 	std::vector<std::vector<int>> nbr[2];
 	std::vector<CuckooHash> nbrMap[2];
 
-	BiGraph(): n{0}, m(0), maxDeg{0}, capacity{0} {}
+	BiGraph(): n{0}, m(0), maxDeg{0} {}
 
-	BiGraph(const std::string &filename): n{0}, m(0), maxDeg{0}, capacity{0} { loadFromFile(filename); }
+	BiGraph(const std::string &filename): n{0}, m(0), maxDeg{0} { loadFromFile(filename); }
+
+	int capacity(int side) {
+		return nbr[side].size();
+	}
 
 	inline int degree(int side, int v) {
 		return nbr[side][v].size();
 	}
 
+	inline int numVertices(int side) {
+		return V[side].size();
+	}
+
+	inline int numEdges() {
+		return m;
+	}
+
 	void clear() {
-		n[0] = n[1] = m = capacity[0] = capacity[1] = 0;
-		V[0].clear(); V[1].clear();
-		std::vector<std::vector<int>>().swap(nbr[0]);
-		std::vector<std::vector<int>>().swap(nbr[1]);
-		std::vector<CuckooHash>().swap(nbrMap[0]);
-		std::vector<CuckooHash>().swap(nbrMap[1]);
+		m = 0;
+		for (int s = 0; s <= 1; ++s) {
+			n[s] = maxDeg[s] = 0;
+			V[s].clear();
+			nbr[s].clear();
+			nbrMap[s].clear();
+		}
+		// std::vector<std::vector<int>>().swap(nbr[0]);
+		// std::vector<std::vector<int>>().swap(nbr[1]);
+		// std::vector<CuckooHash>().swap(nbrMap[0]);
+		// std::vector<CuckooHash>().swap(nbrMap[1]);
 	}
 
 	void resize(int side, int size) {
-		capacity[side] = size;
+		// capacity[side] = size;
 		nbr[side].resize(size);
 		nbrMap[side].resize(size);
 		V[side].reserve(size);
 	}
 
 	void addEdge(int u, int v) {
-		if (u >= capacity[0]) resize(0, u+1);
-		if (v >= capacity[1]) resize(1, v+1);
+		if (u >= capacity(0)) resize(0, u+1);
+		if (v >= capacity(1)) resize(1, v+1);
 		if (nbrMap[0][u].find(v)) return;
 		++m;
 		n[0] = std::max(n[0], u+1);
@@ -108,10 +125,9 @@ struct BiGraph {
 			n[s] = 0;
 			for (int v : V[s]) {
 				n[s] = std::max(n[s], v+1);
-				if (v < capacity[s]) nbr[s][v].clear();
+				if (v < capacity(s)) nbr[s][v].clear();
 			}
-			if (n[s] > capacity[s]) {
-				capacity[s] = n[s];
+			if (n[s] > capacity(s)) {
 				nbr[s].resize(n[s]);
 			}
 		}

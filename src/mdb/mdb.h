@@ -16,6 +16,7 @@
 #define FLAG_UPPERBOUND			1
 #define FLAG_ORDERING			2
 #define FLAG_REDUCTION			4
+#define FLAG_QUEUEING			8
 
 class MDB {
 public:
@@ -29,9 +30,11 @@ protected:
 
 	struct BakPos {
 		int p[2][2];
-		inline void backup(int id, VertexSet *V) {
-			p[id][0] = V[0].frontPos();
-			p[id][1] = V[1].frontPos();	
+		inline void backup(VertexSet *V) {
+			p[0][0] = V[0].frontPos();
+			p[0][1] = V[1].frontPos();	
+			p[1][0] = V[0].backPos();
+			p[1][1] = V[1].backPos();
 		}
 	};
 
@@ -52,24 +55,44 @@ protected:
 	BakPos minus(int uSide, int u);
 	void restore(BakPos &pos);
 	// void rearrange(BakPos &pos);
-	void add(VertexSet V[2], std::vector<int> degV[2], int uSide, int u);
-	void sub(VertexSet V[2], std::vector<int> degV[2], int uSide, int u);
+	// void add(VertexSet V[2], std::vector<int> degV[2], int uSide, int u);
+	// void sub(VertexSet V[2], std::vector<int> degV[2], int uSide, int u);
 
-	inline void addS(int s, int v) { add(S, degS, s, v); }
-	inline void addC(int s, int v) { add(C, degC, s, v); }
-	inline void subS(int s, int v) { sub(S, degS, s, v); }
-	inline void subC(int s, int v) { sub(C, degC, s, v); }
-
-	inline void moveC2S(int s, int v) { 
-		numNnbS += nnbS(s, v);
-		subC(s, v);
-		addS(s, v);
+	inline void addS(int s, int u) { 
+		S[s].push(u);
+		for (int v : G.nbr[s][u]) ++degS[s^1][v];
+	}
+	inline void addC(int s, int u) { 
+		C[s].push(u);
+		for (int v : G.nbr[s][u]) ++degC[s^1][v];
+	}
+	inline void subS(int s, int u) { 
+		S[s].pop(u);
+		for (int v : G.nbr[s][u]) --degS[s^1][v];
+	}
+	inline void subC(int s, int u) { 
+		C[s].pop(u);
+		for (int v : G.nbr[s][u]) --degC[s^1][v];
 	}
 
-	inline void moveS2C(int s, int v) { 
-		subS(s, v);
-		addC(s, v);
-		numNnbS -= nnbS(s, v);
+	inline void moveC2S(int s, int u) { 
+		numNnbS += nnbS(s, u);
+		C[s].popBack(u);
+		S[s].push(u);
+		for (int v : G.nbr[s][u]) {
+			--degC[s^1][v];
+			++degS[s^1][v];
+		}
+	}
+
+	inline void moveS2C(int s, int u) { 
+		S[s].pop(u);
+		C[s].push(u);
+		for (int v : G.nbr[s][u]) {
+			--degS[s^1][v];
+			++degC[s^1][v];
+		}
+		numNnbS -= nnbS(s, u);
 	}
 	
 };

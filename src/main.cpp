@@ -4,7 +4,7 @@
 #include "mdb/mdbp.h"
 #include "mdb/mdbb.h"
 
-
+using namespace logging;
 
 int main(int argc, char *argv[]) {
 	cmdline::parser args;
@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
 	args.add("no-upperbound", '\0', "disable upperbound techniques");
 	args.add("no-reduction", '\0', "disable reduction techniques");
 	args.add("no-ordering", '\0', "disable ordering technique");
+	args.add("no-queueing", '\0', "disable queueing in update");
 	args.parse_check(argc, argv);
 
 
@@ -23,7 +24,8 @@ int main(int argc, char *argv[]) {
 	int lb[2] = {args.get<int>("lb"), args.get<int>("lb")};
 	int flags = !args.exist("no-upperbound") * FLAG_UPPERBOUND \
 			| !args.exist("no-reduction") * FLAG_REDUCTION \
-			| !args.exist("no-ordering") * FLAG_ORDERING;
+			| !args.exist("no-ordering") * FLAG_ORDERING \
+			| !args.exist("no-queueing") * FLAG_QUEUEING;
 
 	bool pivoting = args.get<std::string>("algo")[0] == 'p';
 	

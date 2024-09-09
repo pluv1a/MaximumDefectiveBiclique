@@ -18,6 +18,29 @@ void MDBP::branch(int dep) {
 	// logSet(C[0]);
 	// logSet(C[1]);
 
+	// for (int s = 0; s <= 1; ++s) {
+	// 	for (int u : G.V[s]) {
+	// 		int degSu = 0, degCu = 0;
+	// 		for (int v : G.nbr[s][u]) {
+	// 			if (S[s^1].inside(v)) ++degSu;
+	// 			if (C[s^1].inside(v)) ++degCu;
+	// 		}
+	// 		if (degSu != degS[s][u] || degCu != degC[s][u]) {
+	// 			log("Wrong degree of %d-%d", s, u);
+	// 		}
+	// 	}
+	// 	// for (int u : C[s]) {
+	// 	// 	int degSu = 0, degCu = 0;
+	// 	// 	for (int v : G.nbr[s][u]) {
+	// 	// 		if (S[s^1].inside(v)) ++degSu;
+	// 	// 		if (C[s^1].inside(v)) ++degCu;
+	// 	// 	}
+	// 	// 	if (degSu != degS[s][u] || degCu != degC[s][u]) {
+	// 	// 		log("Wrong degree of %d-%d", s, u);
+	// 	// 	}
+	// 	// }
+	// }
+
 	if (C[0].size() == 0 && C[1].size() == 0) {
 		if (S[0].size() >= lb[0] && S[1].size() >= lb[1] && numEdgesS > numEdgesSs) {
 			Ss[0].clear(); Ss[1].clear();
@@ -46,15 +69,15 @@ void MDBP::branch(int dep) {
 	bool flagPivot = true;
 	for (int s = 0; s <= 1; ++s) {
 		for (int v : C[s]) {
-			if (degS[s][v] < S[s^1].size() && (cntNnbS += nnbS(s, v)) > k-numNnbS) {
-				flagPivot = false;
-				break;
-			}
-#ifdef PIVOTING_V2
-			if (nnbS(s, v) == 1 && degC[s][v] > uVal) {
+			// if (nnbS(s, v) > 0 && (cntNnbS += nnbS(s, v)) > k-numNnbS) {
+			// 	flagPivot = false;
+			// 	break;
+			// }
+// #ifdef PIVOTING_V2
+// 			if (nnbS(s, v) == 1 && degC[s][v] > uVal) {
 
-			}
-#endif
+// 			}
+// #endif
 			if (nnbS(s, v) == 0 && nnbC(s, v) < uVal) {
 				uVal = nnbC(s, v);
 				u = v;
@@ -65,13 +88,13 @@ void MDBP::branch(int dep) {
 	}
 
 	
-	if (flagPivot && u != -1) {
-	//if (false) {
+	if (/*flagPivot && */u != -1) {
+	// if (false) {
 
 		++numPivoting;
 
 		BakPos pos0;
-		pos0.backup(0, C);
+		pos0.backup(C);
 
 		if (upperbound(uSide, u)) {
 			auto pos = update(uSide, u);
@@ -80,37 +103,36 @@ void MDBP::branch(int dep) {
 		} 
 		else ++numUbPruned;
 
-		subC(uSide, u);
+		// subC(uSide, u);
+		minus(uSide, u);
 
 		std::vector<int> cand;
 
-		if (nnbS(uSide, u) == 0) {
-			cand.reserve(nnbC(uSide, u));
-			for (int v : C[uSide^1]) if (!G.connect(uSide, u, v)) {
-				cand.push_back(v);
-			}
-		}
-		else {
-			cand.reserve(C[0].size()+C[1].size());
-			for (int v : C[uSide]) if (nnbS(uSide, v) > 0) {
-				cand.push_back(v);
-			}
-			for (int v : C[uSide^1]) if (nnbS(uSide^1, v) > 0) {
-				cand.push_back(v);
-			}
-		}
+		for (int v : C[uSide^1]) if (!G.connect(uSide, u, v))
+			cand.push_back(v);
 
-		for (int v : cand) {
+		// if (nnbS(uSide, u) > 0) {
+		// 	cand.reserve(C[0].size()+C[1].size());
+		// 	for (int v : C[uSide]) if (nnbS(uSide, v) > 0) {
+		// 		cand.push_back(v);
+		// 	}
+		// 	for (int v : C[uSide^1]) if (nnbS(uSide^1, v) > 0) {
+		// 		cand.push_back(v);
+		// 	}
+		// }
+
+		for (int v : cand) if (C[uSide^1].inside(v)) {
 			if (upperbound(uSide^1, v)) {
 				auto pos = update(uSide^1, v);
 				branch(dep+1);
 				restore(pos);
 			} 
 			else ++numUbPruned;
-			subC(uSide^1, v);
+			//subC(uSide^1, v);
+			minus(uSide^1, v);
 		}
 
-		pos0.backup(1, C);
+		// pos0.backup(1, C);
 		restore(pos0);
 
 	}
@@ -122,8 +144,8 @@ void MDBP::branch(int dep) {
 		uVal = -1;
 
 		for (int s = 0; s <= 1; ++s) {
-			for (int v : C[s]) if (nnbC(s, v) > uVal) {
-				uVal = nnbC(s, v);
+			for (int v : C[s]) if (nnbS(s, v) > uVal) {
+				uVal = nnbS(s, v);
 				u = v;
 				uSide = s;
 			}

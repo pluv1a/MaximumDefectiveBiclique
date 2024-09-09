@@ -3,6 +3,7 @@
 #include "../utils/bigraph.hpp"
 #include "../utils/ordering.hpp"
 #include "../utils/log.hpp"
+#include "../utils/traversal.hpp"
 #include <chrono>
 #include <queue>
 
@@ -73,8 +74,12 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		Sub = core(G, lb[1]-k, lb[0]-k);
 		logBiGraph(Sub);
 
+		if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
+
 		Sub = comm(Sub, lb, k);
 		logBiGraph(Sub);
+
+		if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
 
 		// cnExclusion(Sub, lb, k);
 
@@ -328,10 +333,13 @@ void MDB::russianDoll() {
 
 	// };
 
-	//for (int s = 0; s <= 1; ++s)
-		//this->G.nbrMap[s] = G.nbrMap[s];
+	BiGraph G = std::move(this->G);
+	this->G.clear();
+	for (int s = 0; s <= 1; ++s)
+		this->G.nbrMap[s] = G.nbrMap[s];
 
 	//this->G = G;
+
 
 	auto prune = [&]() {
 		for (int s = 0; s <= 1; ++s) {
@@ -429,7 +437,7 @@ void MDB::russianDoll() {
 		if (!prune()) continue;
 
 
-		//this->G.subGraph(G, S, C);
+		this->G.subGraph(G, S, C);
 
 
 
@@ -544,26 +552,53 @@ bool MDB::upperbound(int uSide, int u) {
 // }
 
 MDB::BakPos MDB::update(int uSide, int u) {
+	using namespace traversal;
+
 	BakPos pos;
-	pos.backup(0, C);
+	pos.backup(C);
 
-	int nnbSu = nnbS(uSide, u);
+	moveC2S(uSide, u);
+
+	//int nnbSu = nnbS(uSide, u);
 	for (int s = 0; s <= 1; ++s) {
-		for (int v : C[s]) if (!(s == uSide && v == u)) {
-			int nnbSuv = (int)(s != uSide && !G.connect(uSide, u, v));
-			if (numNnbS + nnbSu + nnbS(s, v) + nnbSuv > k) {
+		for (int v : C[s]) /*if (!(s == uSide && v == u)) */{
+			//int nnbSuv = (int)(s != uSide && !G.connect(uSide, u, v));
+			if (numNnbS /*+ nnbSu */+ nnbS(s, v)/* + nnbSuv*/ > k) {
 				subC(s, v);
+			}
+		}
+	}
+	static std::vector<int> q[2];
+	q[0].clear(); q[1].clear();
+
+	for (int s = 0; s <= 1; ++s) {
+		for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
+			subC(s, v);
+			if (flags & FLAG_QUEUEING) q[s].push_back(v);
+		}
+	}
+
+	if (flags & FLAG_QUEUEING) {
+		while (!q[0].empty() || !q[1].empty()) {
+			for (int s = 0; s <= 1; ++s) {
+				while (!q[s].empty()) {
+					int v = q[s].back(); q[s].pop_back();
+					for (int w : G.nbr[s][v]) if (C[s^1].inside(w) && degSub(s^1, w) < lb[s]-k+numNnbS) {
+						subC(s^1, w);
+						q[s^1].push_back(w);
+					}
+				}
 			}
 		}
 	}
 
-	for (int t = 0; t < 1; ++t) {
-		for (int s = 0; s <= 1; ++s) {
-			for (int v : C[s]) if ((!(s == uSide && v == u)) && degC[s][v] + degS[s][v] < lb[s^1]-k+numNnbS) {
-				subC(s, v);
-			}
-		}
-	}
+	// for (int t = 0; t < 2; ++t) {
+	// 	for (int s = 0; s <= 1; ++s) {
+	// 		for (int v : C[s]) if (/*(!(s == uSide && v == u)) && */degSub(s,v) < lb[s^1]-k+numNnbS) {
+	// 			subC(s, v);
+	// 		}
+	// 	}
+	// }
 
 	static std::vector<int> cn;
 	if (cn.size() < G.n[uSide]) cn.resize(G.n[uSide]);
@@ -580,14 +615,14 @@ MDB::BakPos MDB::update(int uSide, int u) {
 		}
 	}
 
-	for (int w : C[uSide]) if (w != u && cn[w] < lb[uSide^1]-k+numNnbS)
+	for (int w : C[uSide]) if (/*w != u && */cn[w] < lb[uSide^1]-k+numNnbS)
 		subC(uSide, w);
 
-	pos.backup(1, C);
+	//pos.backup(C);
 
-	moveC2S(uSide, u);
+	//moveC2S(uSide, u);
 	for (int s = 0; s <= 1; ++s) {
-		for (int v : C[s]) if (nnbS(s, v) + nnbC(s, v) == 0) {
+		for (int v : reverse(C[s])) if (nnbSub(s, v) == 0) {
 			moveC2S(s, v);
 		}
 	}
@@ -596,8 +631,10 @@ MDB::BakPos MDB::update(int uSide, int u) {
 }
 
 MDB::BakPos MDB::minus(int uSide, int u) {
+	using namespace traversal;
+
 	BakPos pos;
-	pos.backup(0, C);
+	pos.backup(C);
 
 	subC(uSide, u);
 
@@ -617,18 +654,34 @@ MDB::BakPos MDB::minus(int uSide, int u) {
 		}
 	}
 
-	for (int t = 0; t < 2; ++t) {
-		for (int s = 0; s <= 1; ++s) {
-			for (int v : C[s]) if (degC[s][v] + degS[s][v] + k - numNnbS < lb[s^1]) {
-				subC(s, v);
+	static std::vector<int> q[2];
+	q[0].clear(); q[1].clear();
+
+	for (int s = 0; s <= 1; ++s) {
+		for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
+			subC(s, v);
+			if (flags & FLAG_QUEUEING) q[s].push_back(v);
+		}
+	}
+
+	if (flags & FLAG_QUEUEING) {
+		while (!q[0].empty() || !q[1].empty()) {
+			for (int s = 0; s <= 1; ++s) {
+				while (!q[s].empty()) {
+					int v = q[s].back(); q[s].pop_back();
+					for (int w : G.nbr[s][v]) if (C[s^1].inside(w) && degSub(s^1, w) < lb[s]-k+numNnbS) {
+						subC(s^1, w);
+						q[s^1].push_back(w);
+					}
+				}
 			}
 		}
 	}
 
-	pos.backup(1, C);
+	//pos.backup(1, C);
 
 	for (int s = 0; s <= 1; ++s) {
-		for (int v : C[s]) if (nnbS(s, v) + nnbC(s, v) == 0) {
+		for (int v : reverse(C[s])) if (nnbSub(s, v) == 0) {
 			moveC2S(s, v);
 		}
 	}
@@ -639,7 +692,7 @@ MDB::BakPos MDB::minus(int uSide, int u) {
 
 void MDB::restore(BakPos &pos) {
 	for (int s = 0; s <= 1; ++s) {
-		for (int i = C[s].frontPos()-1; i >= pos.p[1][s]; --i) {
+		for (int i = C[s].backPos(); i < pos.p[1][s]; ++i) {
 			moveS2C(s, C[s][i]);
 		}
 	}
@@ -651,16 +704,16 @@ void MDB::restore(BakPos &pos) {
 	}
 }
 
-void MDB::add(VertexSet V[2], std::vector<int> degV[2], int uSide, int u) {
-	V[uSide].push(u);
-	for (int v : G.nbr[uSide][u]) {
-		++degV[uSide^1][v];
-	}
-}
+// void MDB::add(VertexSet V[2], std::vector<int> degV[2], int uSide, int u) {
+// 	V[uSide].push(u);
+// 	for (int v : G.nbr[uSide][u]) {
+// 		++degV[uSide^1][v];
+// 	}
+// }
 
-void MDB::sub(VertexSet V[2], std::vector<int> degV[2], int uSide, int u) {
-	V[uSide].pop(u);
-	for (int v : G.nbr[uSide][u]) {
-		--degV[uSide^1][v];
-	}
-}
+// void MDB::sub(VertexSet V[2], std::vector<int> degV[2], int uSide, int u) {
+// 	V[uSide].pop(u);
+// 	for (int v : G.nbr[uSide][u]) {
+// 		--degV[uSide^1][v];
+// 	}
+// }

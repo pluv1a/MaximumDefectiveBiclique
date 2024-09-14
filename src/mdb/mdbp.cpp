@@ -12,11 +12,13 @@ void MDBP::run(const std::string &dataPath, int q[2], int k, int flags) {
 }
 
 void MDBP::branch(int dep) {
-	// log("\n---------- dep=%d ----------", dep);
-	// logSet(S[0]);
-	// logSet(S[1]);
-	// logSet(C[0]);
-	// logSet(C[1]);
+	// if (lb[0] == 10) {
+	// 	log("\n---------- dep=%d ----------", dep);
+	// 	logSet(S[0]);
+	// 	logSet(S[1]);
+	// 	logSet(C[0]);
+	// 	logSet(C[1]);
+	// }
 
 	// for (int s = 0; s <= 1; ++s) {
 	// 	for (int u : G.V[s]) {
@@ -29,16 +31,6 @@ void MDBP::branch(int dep) {
 	// 			log("Wrong degree of %d-%d", s, u);
 	// 		}
 	// 	}
-	// 	// for (int u : C[s]) {
-	// 	// 	int degSu = 0, degCu = 0;
-	// 	// 	for (int v : G.nbr[s][u]) {
-	// 	// 		if (S[s^1].inside(v)) ++degSu;
-	// 	// 		if (C[s^1].inside(v)) ++degCu;
-	// 	// 	}
-	// 	// 	if (degSu != degS[s][u] || degCu != degC[s][u]) {
-	// 	// 		log("Wrong degree of %d-%d", s, u);
-	// 	// 	}
-	// 	// }
 	// }
 
 	if (C[0].size() == 0 && C[1].size() == 0) {
@@ -96,6 +88,10 @@ void MDBP::branch(int dep) {
 		BakPos pos0;
 		pos0.backup(C);
 
+		std::vector<int> cand;
+		for (int v : C[uSide^1]) if (!G.connect(uSide, u, v))
+			cand.push_back(v);
+
 		if (upperbound(uSide, u)) {
 			auto pos = update(uSide, u);
 			branch(dep+1);
@@ -105,11 +101,6 @@ void MDBP::branch(int dep) {
 
 		// subC(uSide, u);
 		minus(uSide, u);
-
-		std::vector<int> cand;
-
-		for (int v : C[uSide^1]) if (!G.connect(uSide, u, v))
-			cand.push_back(v);
 
 		// if (nnbS(uSide, u) > 0) {
 		// 	cand.reserve(C[0].size()+C[1].size());
@@ -121,15 +112,29 @@ void MDBP::branch(int dep) {
 		// 	}
 		// }
 
-		for (int v : cand) if (C[uSide^1].inside(v)) {
-			if (upperbound(uSide^1, v)) {
-				auto pos = update(uSide^1, v);
+		bool flagS = false;
+
+		for (int v : cand) {
+			if (S[uSide^1].inside(v)) {
+				flagS = true;
 				branch(dep+1);
-				restore(pos);
-			} 
-			else ++numUbPruned;
-			//subC(uSide^1, v);
-			minus(uSide^1, v);
+				break;
+			}
+		}
+
+		if (!flagS) {
+			for (int v : cand) {
+				if (C[uSide^1].inside(v)) {
+					if (upperbound(uSide^1, v)) {
+						auto pos = update(uSide^1, v);
+						branch(dep+1);
+						restore(pos);
+					} 
+					else ++numUbPruned;
+					// subC(uSide^1, v);
+					minus(uSide^1, v);
+				}
+			}
 		}
 
 		// pos0.backup(1, C);

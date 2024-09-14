@@ -475,6 +475,11 @@ bool MDB::upperbound() {
 
 	if (!(flags & FLAG_UPPERBOUND)) return true;
 
+	for (int s = 0; s <= 1; ++s) {
+		for (int u : S[s]) if (degSub(s, u) < lb[s^1]-k)
+			return false;
+	}
+
 	static std::vector<int> bin[2] = {std::vector<int>(k+1), std::vector<int>(k+1)};
 	
 	int idx[2] = {k-numNnbS, k-numNnbS}, sum[2] = {0, 0}, num[2] = {0, 0};
@@ -525,13 +530,9 @@ bool MDB::upperbound() {
 
 bool MDB::upperbound(int uSide, int u) {
 
-	// if (!(flags & FLAG_UPPERBOUND)) return true;
 	return true;
 
-	for (int s = 0; s <= 1; ++s) {
-		for (int u : S[s]) if (degSub(s, u) < lb[s^1]-k)
-			return false;
-	}
+	if (!(flags & FLAG_UPPERBOUND)) return true;
 
 	static std::vector<int> cn;
 
@@ -539,7 +540,7 @@ bool MDB::upperbound(int uSide, int u) {
 
 	for (int w : S[uSide]) cn[w] = 0;
 
-	for (int v : G.nbr[uSide][u])  
+	for (int v : G.nbr[uSide][u]) if (S[uSide^1].inside(v) || C[uSide^1].inside(v)) 
 		for (int w : G.nbr[uSide^1][v]) if (S[uSide].inside(w))
 			++cn[w];
 

@@ -13,10 +13,13 @@
 #define nnbSub(s, v) 	(nnbS(s, v) + nnbC(s, v))
 
 #define COMM_ROUNDS				1
-#define FLAG_UPPERBOUND			1
-#define FLAG_ORDERING			2
-#define FLAG_REDUCTION			4
-#define FLAG_QUEUEING			8
+
+/* Flags to control algorithm options */
+#define FLAG_QUEUEING			(1<<0)
+#define FLAG_ORDERING			(1<<1)
+#define FLAG_UB_BASIC			(1<<2)
+#define FLAG_UB_IMPRO			(1<<3)
+#define FLAG_REDUCTION			(1<<4)
 
 class MDB {
 public:

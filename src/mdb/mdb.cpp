@@ -625,7 +625,7 @@ MDB::BakPos MDB::update(int uSide, int u) {
 	}
 	
 
-	for (int w : C[uSide]) if (/*w != u && */cn[w] < lb[uSide^1]-k+numNnbS)
+	for (int w : C[uSide]) if (/*w != u && */cn[w] < lb[uSide^1]-k+numNnbS-nnbS(uSide,u))
 		subC(uSide, w);
 
 	for (int s = 0; s <= 1; ++s) {

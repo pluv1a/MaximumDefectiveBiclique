@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
 	args.add("no-reduction", '\0', "disable reduction techniques");
 	args.add("no-ordering", '\0', "disable ordering technique");
 	args.add("no-queueing", '\0', "disable queueing in update");
+	args.add("debug", '\0', "output intermediate data");
 	args.parse_check(argc, argv);
 
 
@@ -25,7 +26,8 @@ int main(int argc, char *argv[]) {
 	int lb[2] = {args.get<int>("lb"), args.get<int>("lb")};
 	int flags = !args.exist("no-ordering") * FLAG_ORDERING \
 			| !args.exist("no-queueing") * FLAG_QUEUEING \
-			| !args.exist("no-reduction") * FLAG_REDUCTION;
+			| !args.exist("no-reduction") * FLAG_REDUCTION \
+			| args.exist("debug") * FLAG_DEBUG;
 
 	if (args.get<int>("ub-level") == 1 || args.get<int>("ub-level") == 3)
 		flags |= FLAG_UB_BASIC;

@@ -12,26 +12,26 @@ void MDBP::run(const std::string &dataPath, int q[2], int k, int flags) {
 }
 
 void MDBP::branch(int dep) {
-	// if (lb[0] == 10) {
-	// 	log("\n---------- dep=%d ----------", dep);
-	// 	logSet(S[0]);
-	// 	logSet(S[1]);
-	// 	logSet(C[0]);
-	// 	logSet(C[1]);
-	// }
+	if (flags & FLAG_DEBUG) {
+		log("\n---------- dep=%d ----------", dep);
+		logSet(S[0]);
+		logSet(S[1]);
+		logSet(C[0]);
+		logSet(C[1]);
+		for (int s = 0; s <= 1; ++s) {
+			for (int u : G.V[s]) {
+				int degSu = 0, degCu = 0;
+				for (int v : G.nbr[s][u]) {
+					if (S[s^1].inside(v)) ++degSu;
+					if (C[s^1].inside(v)) ++degCu;
+				}
+				if (degSu != degS[s][u] || degCu != degC[s][u]) {
+					log("Wrong degree of %d-%d", s, u);
+				}
+			}
+		}
+	}
 
-	// for (int s = 0; s <= 1; ++s) {
-	// 	for (int u : G.V[s]) {
-	// 		int degSu = 0, degCu = 0;
-	// 		for (int v : G.nbr[s][u]) {
-	// 			if (S[s^1].inside(v)) ++degSu;
-	// 			if (C[s^1].inside(v)) ++degCu;
-	// 		}
-	// 		if (degSu != degS[s][u] || degCu != degC[s][u]) {
-	// 			log("Wrong degree of %d-%d", s, u);
-	// 		}
-	// 	}
-	// }
 
 	if (C[0].size() == 0 && C[1].size() == 0) {
 		if (S[0].size() >= lb[0] && S[1].size() >= lb[1] && numEdgesS > numEdgesSs) {
@@ -170,10 +170,12 @@ void MDBP::branch(int dep) {
 		restore(pos);
 	}
 
-	// log(">>>>>>>>>> dep=%d <<<<<<<<<<", dep);
-	// logSet(S[0]);
-	// logSet(S[1]);
-	// logSet(C[0]);
-	// logSet(C[1]);
+	if (flags & FLAG_DEBUG) {
+		// log(">>>>>>>>>> dep=%d <<<<<<<<<<", dep);
+		// logSet(S[0]);
+		// logSet(S[1]);
+		// logSet(C[0]);
+		// logSet(C[1]);
+	}
 
 }

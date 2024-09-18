@@ -15,11 +15,12 @@
 #define COMM_ROUNDS				1
 
 /* Flags to control algorithm options */
-#define FLAG_QUEUEING			(1<<0)
-#define FLAG_ORDERING			(1<<1)
-#define FLAG_UB_BASIC			(1<<2)
-#define FLAG_UB_IMPRO			(1<<3)
-#define FLAG_REDUCTION			(1<<4)
+#define FLAG_DEBUG				(1<<0)
+#define FLAG_QUEUEING			(1<<1)
+#define FLAG_ORDERING			(1<<2)
+#define FLAG_UB_BASIC			(1<<3)
+#define FLAG_UB_IMPRO			(1<<4)
+#define FLAG_REDUCTION			(1<<5)
 
 class MDB {
 public:

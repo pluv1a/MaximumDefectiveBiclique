@@ -14,9 +14,13 @@ int main(int argc, char *argv[]) {
 	args.add<std::string>("algo", 'a', "algorithm", false, "p", cmdline::oneof<std::string>("pivoting", "bipartite", "p", "b"));
 	args.add<int>("ub-level", 'u', "specify upper bound level: 0 (disable), 1 (basic), 2 (improved), 3 (full)", false, 2);
 	// args.add("no-upperbound", '\0', "disable upperbound techniques");
-	args.add("no-reduction", '\0', "disable reduction techniques");
-	args.add("no-ordering", '\0', "disable ordering technique");
-	args.add("no-queueing", '\0', "disable queueing in update");
+	args.add("no-core", '\0', "disable core reduction");
+	args.add("no-cn", '\0', "disable common neighbor reduction");
+	args.add("no-1nn", '\0', "disable one non-neighbor reduction");
+	args.add("no-pb", '\0', "disable progressive bounding");
+	args.add("no-order", '\0', "disable ordering reduction");
+	args.add("no-queue", '\0', "disable queueing in update");
+	args.add("no-heu", '\0', "disable heuristic algorithm");
 	args.add("debug", '\0', "output intermediate data");
 	args.parse_check(argc, argv);
 
@@ -24,9 +28,13 @@ int main(int argc, char *argv[]) {
 	auto dataPath = args.get<std::string>("data");
 	int k = args.get<int>("key");
 	int lb[2] = {args.get<int>("lb"), args.get<int>("lb")};
-	int flags = !args.exist("no-ordering") * FLAG_ORDERING \
-			| !args.exist("no-queueing") * FLAG_QUEUEING \
-			| !args.exist("no-reduction") * FLAG_REDUCTION \
+	int flags = !args.exist("no-order") * FLAG_ORDER \
+			| !args.exist("no-queue") * FLAG_QUEUE \
+			| !args.exist("no-core") * FLAG_CORE \
+			| !args.exist("no-cn") * FLAG_CN \
+			| !args.exist("no-1nn") * FLAG_1NN \
+			| !args.exist("no-pb") * FLAG_PB \
+			| !args.exist("no-heu") * FLAG_HEU \
 			| args.exist("debug") * FLAG_DEBUG;
 
 	if (args.get<int>("ub-level") == 1 || args.get<int>("ub-level") == 3)

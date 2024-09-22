@@ -53,14 +53,17 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		// coexist[s].resize(G.n[s]);
 	}
 
-	log("Start heuristic...");
-	auto heuristicStartTime = std::chrono::steady_clock::now();
-	heuristic(G);
-	int heuristicTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-heuristicStartTime).count();
-	log("Heuristic done! Time: %d ms", heuristicTime);
-	log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
-	logSetInfo(Ss[0], "U*");
-	logSetInfo(Ss[1], "V*");
+	if (flags & FLAG_HEU) {
+		log("Start heuristic...");
+		auto heuristicStartTime = std::chrono::steady_clock::now();
+		heuristic(G);
+		int heuristicTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-heuristicStartTime).count();
+		log("Heuristic done! Time: %d ms", heuristicTime);
+		log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
+		logSetInfo(Ss[0], "U*");
+		logSetInfo(Ss[1], "V*");
+
+	}
 	
 	log("Start searching...");
 	auto searchStartTime = std::chrono::steady_clock::now();
@@ -71,12 +74,12 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		MDB::lb[0] = std::max(q[0], lb[0] >> 1);
 		log("*** lb = (%d, %d) ***", lb[0], lb[1]);
 
-		Sub = core(G, lb[1]-k, lb[0]-k);
+		Sub = (flags & FLAG_CORE) ? core(G, lb[1]-k, lb[0]-k) : G;
 		logBiGraph(Sub);
 
 		if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
 
-		Sub = comm(Sub, lb, k);
+		if (flags & FLAG_CN) Sub = comm(Sub, lb, k);
 		logBiGraph(Sub);
 
 		if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
@@ -84,7 +87,7 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		// cnExclusion(Sub, lb, k);
 
 		auto branchStartTime = std::chrono::steady_clock::now();
-		if ((flags & FLAG_ORDERING) && lb[0] > k && lb[1] > k) {
+		if ((flags & FLAG_ORDER) && lb[0] > k && lb[1] > k) {
 			log("Search scheme: RussianDoll"); 
 			russianDoll();
 		} 
@@ -473,7 +476,6 @@ void MDB::russianDoll() {
 
 bool MDB::upperbound() {
 
-
 	if (flags & FLAG_UB_BASIC) {
 		for (int s = 0; s <= 1; ++s) {
 			for (int u : S[s]) if (degSub(s, u) < lb[s^1]-k)
@@ -583,11 +585,11 @@ MDB::BakPos MDB::update(int uSide, int u) {
 	for (int s = 0; s <= 1; ++s) {
 		for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
 			subC(s, v);
-			if (flags & FLAG_QUEUEING) q[s].push_back(v);
+			if (flags & FLAG_QUEUE) q[s].push_back(v);
 		}
 	}
 
-	if (flags & FLAG_QUEUEING) {
+	if (flags & FLAG_QUEUE) {
 		while (!q[0].empty() || !q[1].empty()) {
 			for (int s = 0; s <= 1; ++s) {
 				while (!q[s].empty()) {
@@ -610,23 +612,25 @@ MDB::BakPos MDB::update(int uSide, int u) {
 	// }
 
 	static std::vector<int> cn;
-	if (cn.size() < G.n[uSide]) cn.resize(G.n[uSide]);
-	for (int w : C[uSide]) cn[w] = 0;
 
-	for (int v : G.nbr[uSide][u]) if (S[uSide^1].inside(v) || C[uSide^1].inside(v)) {
-		if (C[uSide].size() < G.degree(uSide^1, v)) {
-			for (int w : C[uSide]) if (G.connect(uSide, w, v))
-				++cn[w];
+	if (flags & FLAG_CN) {
+		if (cn.size() < G.n[uSide]) cn.resize(G.n[uSide]);
+		for (int w : C[uSide]) cn[w] = 0;
+
+		for (int v : G.nbr[uSide][u]) if (S[uSide^1].inside(v) || C[uSide^1].inside(v)) {
+			if (C[uSide].size() < G.degree(uSide^1, v)) {
+				for (int w : C[uSide]) if (G.connect(uSide, w, v))
+					++cn[w];
+			}
+			else {
+				for (int w : G.nbr[uSide^1][v]) if (C[uSide].inside(w)) 
+					++cn[w];
+			}
 		}
-		else {
-			for (int w : G.nbr[uSide^1][v]) if (C[uSide].inside(w)) 
-				++cn[w];
-		}
+
+		for (int w : C[uSide]) if (/*w != u && */cn[w] < lb[uSide^1]-k+numNnbS-nnbS(uSide,u))
+			subC(uSide, w);
 	}
-	
-
-	for (int w : C[uSide]) if (/*w != u && */cn[w] < lb[uSide^1]-k+numNnbS-nnbS(uSide,u))
-		subC(uSide, w);
 
 	for (int s = 0; s <= 1; ++s) {
 		for (int v : reverse(C[s])) if (nnbSub(s, v) == 0) {
@@ -646,7 +650,7 @@ MDB::BakPos MDB::minus(int uSide, int u) {
 	subC(uSide, u);
 
 	// u has 1 non-neighbor
-	if (nnbS(uSide, u) + nnbC(uSide, u) == 1) {
+	if ((flags & FLAG_1NN) && nnbS(uSide, u) + nnbC(uSide, u) == 1) {
 
 		int uNnbC = -1;
 		if (nnbC(uSide, u) == 1) {
@@ -667,11 +671,11 @@ MDB::BakPos MDB::minus(int uSide, int u) {
 	for (int s = 0; s <= 1; ++s) {
 		for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
 			subC(s, v);
-			if (flags & FLAG_QUEUEING) q[s].push_back(v);
+			if (flags & FLAG_QUEUE) q[s].push_back(v);
 		}
 	}
 
-	if (flags & FLAG_QUEUEING) {
+	if (flags & FLAG_QUEUE) {
 		while (!q[0].empty() || !q[1].empty()) {
 			for (int s = 0; s <= 1; ++s) {
 				while (!q[s].empty()) {

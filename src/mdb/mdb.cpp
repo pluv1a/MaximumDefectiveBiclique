@@ -232,8 +232,6 @@ void MDB::heuristic(BiGraph &G) {
 		}
 	}
 
-	
-
 
 	for (int s = 0; s <= 1; ++s) {
 
@@ -441,8 +439,6 @@ void MDB::russianDoll() {
 
 
 		this->G.subGraph(G, S, C);
-
-
 
 		// for (int s = 0; s <= 1; ++s) {
 		// 	for (int v : Sub.V[s]) {

@@ -63,26 +63,24 @@ void MDBB::branch(int dep) {
 
 	int u = -1, uSide = -1, uVal = -1;
 	
-	if (u == -1) {
-		// most non-neighbors in S
+	// most non-neighbors in S
+	for (int s = 0; s <= 1; ++s) {
+		for (int v : C[s]) if (nnbS(s, v) > uVal) {
+			u = v;
+			uSide = s;
+			uVal = nnbS(s, v);
+		}
+	}
+
+	// most non-neighbors in C
+	if (uVal == 0) {
+	// if (true) {
+		uVal = -1;
 		for (int s = 0; s <= 1; ++s) {
-			for (int v : C[s]) if (nnbS(s, v) > uVal) {
+			for (int v: C[s]) if (nnbC(s, v) > uVal) {
 				u = v;
 				uSide = s;
-				uVal = nnbS(s, v);
-			}
-		}
-
-		// most non-neighbors in C
-		if (uVal == 0) {
-		// if (true) {
-			uVal = -1;
-			for (int s = 0; s <= 1; ++s) {
-				for (int v: C[s]) if (nnbC(s, v) > uVal) {
-					u = v;
-					uSide = s;
-					uVal = nnbC(s, v);
-				}
+				uVal = nnbC(s, v);
 			}
 		}
 	}

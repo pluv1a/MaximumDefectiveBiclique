@@ -578,10 +578,12 @@ MDB::BakPos MDB::update(int uSide, int u) {
 	static std::vector<int> q[2];
 	q[0].clear(); q[1].clear();
 
-	for (int s = 0; s <= 1; ++s) {
-		for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
-			subC(s, v);
-			if (flags & FLAG_QUEUE) q[s].push_back(v);
+	if (flags & FLAG_CORE) {
+		for (int s = 0; s <= 1; ++s) {
+			for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
+				subC(s, v);
+				if (flags & FLAG_QUEUE) q[s].push_back(v);
+			}
 		}
 	}
 
@@ -664,10 +666,12 @@ MDB::BakPos MDB::minus(int uSide, int u) {
 	static std::vector<int> q[2];
 	q[0].clear(); q[1].clear();
 
-	for (int s = 0; s <= 1; ++s) {
-		for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
-			subC(s, v);
-			if (flags & FLAG_QUEUE) q[s].push_back(v);
+	if (flags & FLAG_CORE) {
+		for (int s = 0; s <= 1; ++s) {
+			for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
+				subC(s, v);
+				if (flags & FLAG_QUEUE) q[s].push_back(v);
+			}
 		}
 	}
 

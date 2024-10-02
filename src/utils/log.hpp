@@ -60,7 +60,7 @@ namespace logging {
 		log("%s info: |V|=%d, |E|=%d", name.c_str(), G.V.size(), G.m);
 	}
 	inline void logBiGraphInfo(BiGraph &G, const std::string &name) {
-		log("%s info: |U|=%d, |V|=%d, |E|=%d", name.c_str(), G.V[0].size(), G.V[1].size(), G.m);
+		log("%s info: |U|=%d, |V|=%d, |E|=%d, maxdU=%d, maxdV=%d", name.c_str(), G.V[0].size(), G.V[1].size(), G.m, G.maxDeg[0], G.maxDeg[1]);
 	}
 	inline void logVecInfo(std::vector<int> a, const std::string &name, int begin, int end) {
 		std::stringstream ss;

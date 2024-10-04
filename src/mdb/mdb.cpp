@@ -39,7 +39,7 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 	MDB::k = k;
 	MDB::flags = flags;
 
-	numNnbS = numNnbSs = numUbPrunedE = \
+	numNnbS = numNnbSs = \
 	numBranches = numPivoting = numBipartite = \
 	numUbPruned = branchTime = reductionTime = 0;
 

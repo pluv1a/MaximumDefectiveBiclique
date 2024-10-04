@@ -57,8 +57,9 @@ void MDBP::branch(int dep) {
 
 	++numBranches;
 
-	int cntNnbS = 0, u = -1, uSide = -1, uVal = G.n[0]+G.n[1];
-	bool flagPivot = true;
+	// int cntNnbS = 0;
+	int u = -1, uSide = -1, uVal = G.n[0]+G.n[1];
+	// bool flagPivot = true;
 	for (int s = 0; s <= 1; ++s) {
 		for (int v : C[s]) {
 			// if ((cntNnbS += (nnbS(s, v) > 0)) > k-numNnbS) {

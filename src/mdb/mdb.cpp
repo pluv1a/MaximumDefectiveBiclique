@@ -53,11 +53,14 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		// coexist[s].resize(G.n[s]);
 	}
 
+	int atime = 0;
+
 	if (flags & FLAG_HEU) {
 		log("Start heuristic...");
 		auto heuristicStartTime = std::chrono::steady_clock::now();
 		heuristic(G);
 		int heuristicTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-heuristicStartTime).count();
+		atime += heuristicTime;
 		log("Heuristic done! Time: %d ms", heuristicTime);
 		log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
 		logSetInfo(Ss[0], "U*");
@@ -68,23 +71,46 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 	log("Start searching...");
 	auto searchStartTime = std::chrono::steady_clock::now();
 	BiGraph &Sub = this->G;
-	lb[0] = G.maxDeg[1]+k;
-	while (lb[0] > q[0]) {
-		MDB::lb[1] = std::max(q[1], numEdgesSs / lb[0]);
-		MDB::lb[0] = std::max(q[0], lb[0] >> 1);
+
+	if (flags & FLAG_PB) {
+		lb[0] = G.maxDeg[1]+k;
+		while (lb[0] > q[0]) {
+			MDB::lb[1] = std::max(q[1], numEdgesSs / lb[0]);
+			MDB::lb[0] = std::max(q[0], lb[0] >> 1);
+			log("*** lb = (%d, %d) ***", lb[0], lb[1]);
+
+			Sub = (flags & FLAG_CORE) ? core(G, lb[1]-k, lb[0]-k) : G;
+			logBiGraph(Sub);
+
+			if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
+
+			if (flags & FLAG_CN) Sub = comm(Sub, lb, k);
+			logBiGraph(Sub);
+
+			if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
+
+			// cnExclusion(Sub, lb, k);
+
+			auto branchStartTime = std::chrono::steady_clock::now();
+			if ((flags & FLAG_ORDER) && lb[0] > k && lb[1] > k) {
+				log("Search scheme: RussianDoll"); 
+				russianDoll();
+			} 
+			else {
+				log("Search scheme: All");
+				searchAll(); 
+			}
+			branchTime += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - branchStartTime).count();
+		}
+	}
+	else {
 		log("*** lb = (%d, %d) ***", lb[0], lb[1]);
 
 		Sub = (flags & FLAG_CORE) ? core(G, lb[1]-k, lb[0]-k) : G;
 		logBiGraph(Sub);
 
-		if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
-
 		if (flags & FLAG_CN) Sub = comm(Sub, lb, k);
 		logBiGraph(Sub);
-
-		if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
-
-		// cnExclusion(Sub, lb, k);
 
 		auto branchStartTime = std::chrono::steady_clock::now();
 		if ((flags & FLAG_ORDER) && lb[0] > k && lb[1] > k) {
@@ -95,11 +121,11 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 			log("Search scheme: All");
 			searchAll(); 
 		}
-		branchTime += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - branchStartTime).count();
+		branchTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - branchStartTime).count();
 	}
 	int searchTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - searchStartTime).count();
 	log("Searching done! Total time: %d ms, Branch time: %d ms, branch num: %d (pivoting: %d, bipartite: %d), ub pruned num: %d", 
-		searchTime, branchTime, numBranches, numPivoting, numBipartite, numUbPruned);
+		searchTime+atime, branchTime, numBranches, numPivoting, numBipartite, numUbPruned);
 
 	log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
 	logSetInfo(Ss[0], "U*");
@@ -110,7 +136,6 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		for (int v : Ss[1])
 			if (!G.connect(u, v))
 				log("(%d, %d)", u, v);
-
 }
 
 BiGraph MDB::core(BiGraph &G, int a, int b) {

@@ -53,14 +53,11 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		// coexist[s].resize(G.n[s]);
 	}
 
-	int atime = 0;
-
 	if (flags & FLAG_HEU) {
 		log("Start heuristic...");
 		auto heuristicStartTime = std::chrono::steady_clock::now();
 		heuristic(G);
 		int heuristicTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-heuristicStartTime).count();
-		atime += heuristicTime;
 		log("Heuristic done! Time: %d ms", heuristicTime);
 		log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
 		logSetInfo(Ss[0], "U*");
@@ -125,7 +122,7 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 	}
 	int searchTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - searchStartTime).count();
 	log("Searching done! Total time: %d ms, Branch time: %d ms, branch num: %d (pivoting: %d, bipartite: %d), ub pruned num: %d", 
-		searchTime+atime, branchTime, numBranches, numPivoting, numBipartite, numUbPruned);
+		searchTime, branchTime, numBranches, numPivoting, numBipartite, numUbPruned);
 
 	log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
 	logSetInfo(Ss[0], "U*");

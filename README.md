@@ -13,7 +13,7 @@ cmake . && make
 ### Run:
 ##### Basic usage:
 ```bash
-bin/run -d <dataset> -k <integer> -q <size threshold> -a <algorithm: p/b/mdc> [commands]
+bin/run -d <dataset> -k <integer> -q <size threshold> -a <algorithm: p/b/mdc> [options]
 ```
 ### Help:
 ```bash

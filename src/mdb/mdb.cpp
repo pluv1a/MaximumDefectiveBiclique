@@ -494,14 +494,12 @@ void MDB::russianDoll() {
 
 bool MDB::upperbound() {
 
-	if (flags & FLAG_UB_BASIC) {
-		for (int s = 0; s <= 1; ++s) {
-			for (int u : S[s]) if (degSub(s, u) < lb[s^1]-k)
-				return false;
-		}
-	}
+	// if (!(flags & FLAG_UB)) return true;
 
-	if (!(flags & FLAG_UB_IMPRO)) return true;
+	for (int s = 0; s <= 1; ++s) {
+		for (int u : S[s]) if (degSub(s, u) < lb[s^1]-k)
+			return false;
+	}
 
 	static std::vector<int> bin[2] = {std::vector<int>(k+1), std::vector<int>(k+1)};
 	
@@ -553,9 +551,9 @@ bool MDB::upperbound() {
 
 bool MDB::upperbound(int uSide, int u) {
 
-	// return true;
+	return true;
 
-	if (!(flags & FLAG_UB_BASIC)) return true;
+	// if (!(flags & FLAG_UB)) return true;
 
 	static std::vector<int> cn;
 

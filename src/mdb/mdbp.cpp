@@ -48,12 +48,14 @@ void MDBP::branch(int dep) {
 
 	if (S[0].size()+C[0].size()<lb[0] || S[1].size()+C[1].size()<lb[1]) return;
 
-	int numEdgesSub = 0, s = (int)(S[0].size()+C[0].size() > S[1].size()+C[1].size());
-	for (int v : S[s]) numEdgesSub += degSub(s, v);
-	for (int v : C[s]) numEdgesSub += degSub(s, v);
-	if (numEdgesSub <= numEdgesSs) return;
+	if (flags & FLAG_UB) {
+		int numEdgesSub = 0, s = (int)(S[0].size()+C[0].size() > S[1].size()+C[1].size());
+		for (int v : S[s]) numEdgesSub += degSub(s, v);
+		for (int v : C[s]) numEdgesSub += degSub(s, v);
+		if (numEdgesSub <= numEdgesSs) return;
 
-	if (!upperbound()) { ++numUbPruned; return; }
+		if (!upperbound()) { ++numUbPruned; return; }
+	}
 
 	++numBranches;
 
@@ -93,7 +95,7 @@ void MDBP::branch(int dep) {
 		for (int v : C[uSide^1]) if (!G.connect(uSide, u, v))
 			cand.push_back(v);
 
-		if (upperbound(uSide, u)) {
+		if (!(flags & FLAG_UB) || upperbound(uSide, u)) {
 			auto pos = update(uSide, u);
 			branch(dep+1);
 			restore(pos);
@@ -126,7 +128,7 @@ void MDBP::branch(int dep) {
 		if (!flagS) {
 			for (int v : cand) {
 				if (C[uSide^1].inside(v)) {
-					if (upperbound(uSide^1, v)) {
+					if (!(flags & FLAG_UB) || upperbound(uSide^1, v)) {
 						auto pos = update(uSide^1, v);
 						branch(dep+1);
 						restore(pos);
@@ -159,7 +161,7 @@ void MDBP::branch(int dep) {
 
 		// log("Choose: %d-%d", uSide, u);
 
-		if (upperbound(uSide, u)) {
+		if (!(flags & FLAG_UB) || upperbound(uSide, u)) {
 			auto pos = update(uSide, u);
 			branch(dep+1);
 			restore(pos);

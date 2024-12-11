@@ -13,7 +13,8 @@ int main(int argc, char *argv[]) {
 	args.add<int>("key", 'k', "value of k", true, 0);
 	args.add<int>("lb", 'q', "lower bound size", false, 0);
 	args.add<std::string>("algo", 'a', "algorithm", false, "p", cmdline::oneof<std::string>("pivoting", "bisect", "baseline", "p", "b", "mdc"));
-	args.add<int>("ub-level", 'u', "specify upper bound level: 0 (disable), 1 (basic), 2 (improved), 3 (full)", false, 2);
+	// args.add<int>("ub-level", 'u', "specify upper bound level: 0 (disable), 1 (basic), 2 (improved), 3 (full)", false, 2);
+	args.add("no-ub", '\0', "disable upper bound techniques");
 	args.add("no-core", '\0', "disable core reduction");
 	args.add("no-cn", '\0', "disable common neighbor reduction");
 	args.add("no-1nn", '\0', "disable one non-neighbor reduction");
@@ -21,6 +22,7 @@ int main(int argc, char *argv[]) {
 	args.add("no-order", '\0', "disable ordering reduction");
 	args.add("no-queue", '\0', "disable queueing in update");
 	args.add("no-heu", '\0', "disable heuristic algorithm");
+	args.add("no-br", '\0', "disable branching rules");
 	args.add("debug", '\0', "output intermediate data");
 	args.parse_check(argc, argv);
 
@@ -35,13 +37,15 @@ int main(int argc, char *argv[]) {
 			| !args.exist("no-1nn") * FLAG_1NN \
 			| !args.exist("no-pb") * FLAG_PB \
 			| !args.exist("no-heu") * FLAG_HEU \
+			| !args.exist("no-br") * FLAG_BR \
+			| !args.exist("no-ub") * FLAG_UB \
 			| args.exist("debug") * FLAG_DEBUG;
 
-	if (args.get<int>("ub-level") == 1 || args.get<int>("ub-level") == 3)
-		flags |= FLAG_UB_BASIC;
+	// if (args.get<int>("ub-level") == 1 || args.get<int>("ub-level") == 3)
+	// 	flags |= FLAG_UB_BASIC;
 
-	if (args.get<int>("ub-level") == 2 || args.get<int>("ub-level") == 3)
-		flags |= FLAG_UB_IMPRO;
+	// if (args.get<int>("ub-level") == 2 || args.get<int>("ub-level") == 3)
+	// 	flags |= FLAG_UB_IMPRO;
 
 	auto startTimePoint = std::chrono::steady_clock::now();
 

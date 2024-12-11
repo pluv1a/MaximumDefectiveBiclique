@@ -51,17 +51,21 @@ void MDBB::branch(int dep) {
 
 	if (S[0].size()+C[0].size()<lb[0] || S[1].size()+C[1].size()<lb[1]) return;
 
-	int numEdgesSub = 0, s = (int)(S[0].size()+C[0].size() > S[1].size()+C[1].size());
-	for (int v : S[s]) numEdgesSub += degSub(s, v);
-	for (int v : C[s]) numEdgesSub += degSub(s, v);
-	if (numEdgesSub <= numEdgesSs) return;
+	if (flags & FLAG_UB) {
+		int numEdgesSub = 0, s = (int)(S[0].size()+C[0].size() > S[1].size()+C[1].size());
+		for (int v : S[s]) numEdgesSub += degSub(s, v);
+		for (int v : C[s]) numEdgesSub += degSub(s, v);
+		if (numEdgesSub <= numEdgesSs) return;
 
-	if (!upperbound()) { ++numUbPruned; return; }
+		if (!upperbound()) { ++numUbPruned; return; }
+	}
 
 	++numBranches;
 	++numBipartite;
 
 	int u = -1, uSide = -1, uVal = -1;
+
+	if (flags & FLAG_BR) {
 	
 	// most non-neighbors in S
 	for (int s = 0; s <= 1; ++s) {
@@ -84,20 +88,27 @@ void MDBB::branch(int dep) {
 			}
 		}
 	}
+	}
+	else {
+		for (int s = 0; s <= 1; ++s) {
+			for (int v : C[s]) {
+				u = v;
+				uSide = s;
+			}
+		}
+	}
 
 	assert(u != -1);
 
 	// log("Choose: %d-%d, degS=%d, degC=%d", uSide, u, degS[uSide][u], degC[uSide][u]);
 
-	if (upperbound(uSide, u)) {
-	// if (true) {
+	if (!(flags & FLAG_UB) || upperbound(uSide, u)) {
 		auto pos = update(uSide, u);
 		branch(dep+1);
 		restore(pos);
 	}
 	else {
 		++numUbPruned;
-		//log("1");
 	}
 	
 	auto pos = minus(uSide, u);

@@ -16,15 +16,15 @@
 
 /* Flags to control algorithm options */
 #define FLAG_DEBUG			(1<<0)
-#define FLAG_UB_BASIC		(1<<1)
-#define FLAG_UB_IMPRO		(1<<2)
-#define FLAG_CORE			(1<<3)
-#define FLAG_CN				(1<<4)
-#define FLAG_1NN			(1<<5)
-#define FLAG_QUEUE			(1<<6)
-#define FLAG_ORDER			(1<<7)
-#define FLAG_PB				(1<<8)
-#define FLAG_HEU			(1<<9)
+#define FLAG_UB				(1<<1)
+#define FLAG_CORE			(1<<2)
+#define FLAG_CN				(1<<3)
+#define FLAG_1NN			(1<<4)
+#define FLAG_QUEUE			(1<<5)
+#define FLAG_ORDER			(1<<6)
+#define FLAG_PB				(1<<7)
+#define FLAG_HEU			(1<<8)
+#define FLAG_BR				(1<<9)
 
 class MDB {
 public:

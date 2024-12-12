@@ -34,26 +34,35 @@ void MDBP::branch(int dep) {
 
 
 	if (C[0].size() == 0 && C[1].size() == 0) {
-		if (S[0].size() >= lb[0] && S[1].size() >= lb[1] && numEdgesS > numEdgesSs) {
-			Ss[0].clear(); Ss[1].clear();
-			for (int u : S[0]) Ss[0].push(u);
-			for (int v : S[1]) Ss[1].push(v);
-			numNnbSs = numNnbS;
-			log("New S*! |E|=%d", numEdgesSs);
+		// if (X[0].size() == 0 && X[1].size() == 0)
+		if (S[0].size() >= lb[0] && S[1].size() >= lb[1]) {
+			if (numEdgesS > numEdgesSs) {
+				for (int s = 0; s <= 1; ++s) {
+					Ss[s].clear();
+				}
+				for (int s = 0; s <= 1; ++s) {
+					for (int u : S[s]) {
+						Ss[s].push(u);
+					}
+				}
+				numNnbSs = numNnbS;
+				log("New S*! |E|=%d", numEdgesSs);
+			}
 			// logSet(Ss[0]);
 			// logSet(Ss[1]);
+			topK.push(SubGraph(S, numEdgesS));
 		}
 		return;
 	}
 
 	if (S[0].size()+C[0].size()<lb[0] || S[1].size()+C[1].size()<lb[1]) return;
 
-	int numEdgesSub = 0, s = (int)(S[0].size()+C[0].size() > S[1].size()+C[1].size());
-	for (int v : S[s]) numEdgesSub += degSub(s, v);
-	for (int v : C[s]) numEdgesSub += degSub(s, v);
-	if (numEdgesSub <= numEdgesSs) return;
+	// int numEdgesSub = 0, s = (int)(S[0].size()+C[0].size() > S[1].size()+C[1].size());
+	// for (int v : S[s]) numEdgesSub += degSub(s, v);
+	// for (int v : C[s]) numEdgesSub += degSub(s, v);
+	// if (numEdgesSub < numEdgesSs) return;
 
-	if (!upperbound()) { ++numUbPruned; return; }
+	// if (!upperbound()) { ++numUbPruned; return; }
 
 	++numBranches;
 
@@ -87,7 +96,7 @@ void MDBP::branch(int dep) {
 		++numPivoting;
 
 		BakPos pos0;
-		pos0.backup(C);
+		pos0.backup(C, X);
 
 		std::vector<int> cand;
 		for (int v : C[uSide^1]) if (!G.connect(uSide, u, v))

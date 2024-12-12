@@ -34,7 +34,19 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 	BiGraph G(dataPath);
 	logBiGraph(G);
 
-	lb[0] = q[0];
+	BiGraph sub = core(G, q[0], 4);
+	int fak[2] = {0};
+	for (int s = 0; s <= 1; ++s) {
+		for (int v : sub.V[s]) 
+			if (v >= G.n[s]-50)
+				++fak[s];
+	}
+
+	log("total: [%d, %d], fake: [%d, %d]", sub.V[0].size(), sub.V[1].size(), fak[0], fak[1]);
+
+	return;
+
+	lb[0] = 4;
 	lb[1] = q[1];
 	MDB::k = k;
 	MDB::flags = flags;
@@ -47,7 +59,7 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		Ss[s].reserve(G.n[s]);
 		S[s].reserve(G.n[s]);
 		C[s].reserve(G.n[s]);
-		// X[s].reserve(G.n[s]);
+		X[s].reserve(G.n[s]);
 		degS[s].resize(G.n[s]);
 		degC[s].resize(G.n[s]);
 		// coexist[s].resize(G.n[s]);
@@ -123,6 +135,25 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 	int searchTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - searchStartTime).count();
 	log("Searching done! Total time: %d ms, Branch time: %d ms, branch num: %d (pivoting: %d, bipartite: %d), ub pruned num: %d", 
 		searchTime, branchTime, numBranches, numPivoting, numBipartite, numUbPruned);
+
+	VertexSet T[2];
+	int numTopK = topK.size(), numK = 2000;
+	while (!topK.empty() && numK--) {
+		SubGraph sub = topK.top(); topK.pop();
+		for (int s = 0; s <= 1; ++s) {
+			for (int v : sub.V[s])
+				T[s].push(v);
+		}
+	}
+
+	int fake[2] = {0};
+	for (int s = 0; s <= 1; ++s) {
+		for (int v : T[s]) 
+			if (v >= G.n[s]-50)
+				++fake[s];
+	}
+
+	log("numTopK: %d, total: [%d, %d], fake: [%d, %d]", numTopK, T[0].size(), T[1].size(), fake[0], fake[1]);
 
 	log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
 	logSetInfo(Ss[0], "U*");
@@ -330,7 +361,7 @@ void MDB::heuristic(BiGraph &G) {
 void MDB::searchAll() {
 	numNnbS = 0;
 	for (int s = 0; s <= 1; ++s) {
-		S[s].clear(); C[s].clear(); //X[s].clear();
+		S[s].clear(); C[s].clear(); X[s].clear();
 		for (int u : G.V[s]) {
 			degS[s][u] = 0;
 			degC[s][u] = G.degree(s, u);
@@ -584,7 +615,7 @@ MDB::BakPos MDB::update(int uSide, int u) {
 	using namespace traversal;
 
 	BakPos pos;
-	pos.backup(C);
+	pos.backup(C, X);
 
 	moveC2S(uSide, u);
 
@@ -594,6 +625,11 @@ MDB::BakPos MDB::update(int uSide, int u) {
 			//int nnbSuv = (int)(s != uSide && !G.connect(uSide, u, v));
 			if (numNnbS /*+ nnbSu */+ nnbS(s, v)/* + nnbSuv*/ > k) {
 				subC(s, v);
+			}
+		}
+		for (int v : X[s]) {
+			if (numNnbS + nnbS(s, v) > k) {
+				subX(s, v);
 			}
 		}
 	}
@@ -665,9 +701,10 @@ MDB::BakPos MDB::minus(int uSide, int u) {
 	using namespace traversal;
 
 	BakPos pos;
-	pos.backup(C);
+	pos.backup(C, X);
 
 	subC(uSide, u);
+	addX(uSide, u);
 
 	// u has 1 non-neighbor
 	if ((flags & FLAG_1NN) && nnbS(uSide, u) + nnbC(uSide, u) == 1) {
@@ -725,14 +762,21 @@ MDB::BakPos MDB::minus(int uSide, int u) {
 
 void MDB::restore(BakPos &pos) {
 	for (int s = 0; s <= 1; ++s) {
-		for (int i = C[s].backPos(); i < pos.p[1][s]; ++i) {
+		for (int i = C[s].backPos(); i < pos.pC[1][s]; ++i) {
 			moveS2C(s, C[s][i]);
 		}
 	}
 
 	for (int s = 0; s <= 1; ++s) {
-		for (int i = C[s].frontPos()-1; i >= pos.p[0][s]; --i) {
+		for (int i = C[s].frontPos()-1; i >= pos.pC[0][s]; --i) {
 			addC(s, C[s][i]);
+			subX(s, C[s][i]);
+		}
+	}
+
+	for (int s = 0; s <= 1; ++s) {
+		for (int i = X[s].frontPos()-1; i >= pos.pX[0][s]; --i) {
+			addX(s, X[s][i]);
 		}
 	}
 }

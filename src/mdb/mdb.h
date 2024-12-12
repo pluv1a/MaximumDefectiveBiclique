@@ -4,6 +4,7 @@
 #include "../utils/vertexset.hpp"
 #include "../utils/hash.hpp"
 #include "../utils/bigraph.hpp"
+#include <queue>
 
 #define numEdgesSs 		(Ss[0].size() * Ss[1].size() - numNnbSs)
 #define numEdgesS 		(S[0].size() * S[1].size() - numNnbS)
@@ -26,6 +27,20 @@
 #define FLAG_PB				(1<<8)
 #define FLAG_HEU			(1<<9)
 
+struct SubGraph {
+	std::vector<int> V[2];
+	int numEdges;
+	bool operator < (const SubGraph& s) const {
+		return numEdges < s.numEdges;
+	}
+	SubGraph (const VertexSet *S, int numEdges): numEdges(numEdges) {
+		for (int s = 0; s <= 1; ++s) {
+			for (int u : S[s])
+				V[s].push_back(u);
+		}
+	}
+};
+
 class MDB {
 public:
 	void findMDB(const std::string &dataPath, int q[2], int k, int flags=7);
@@ -34,16 +49,19 @@ protected:
 	int k, numNnbS, numNnbSs, lb[2], flags;
 	std::vector<int> degS[2], degC[2];
 	// std::vector<CuckooHash> coexist[2];
+	std::priority_queue<SubGraph> topK;
 	BiGraph G;
 	int branchTime, reductionTime, numBranches, numUbPruned, numPivoting, numBipartite;
 
 	struct BakPos {
-		int p[2][2];
-		inline void backup(VertexSet *V) {
-			p[0][0] = V[0].frontPos();
-			p[0][1] = V[1].frontPos();	
-			p[1][0] = V[0].backPos();
-			p[1][1] = V[1].backPos();
+		int pC[2][2], pX[2][2];
+		inline void backup(VertexSet *C, VertexSet *X) {
+			for (int s = 0; s <= 1; ++s) {
+				pC[0][s] = C[s].frontPos();
+				pC[1][s] = C[s].backPos();
+				pX[0][s] = X[s].frontPos();
+				pX[1][s] = X[s].backPos();
+			}
 		}
 	};
 
@@ -81,6 +99,12 @@ protected:
 	inline void subC(int s, int u) { 
 		C[s].pop(u);
 		for (int v : G.nbr[s][u]) --degC[s^1][v];
+	}
+	inline void addX(int s, int u) { 
+		X[s].push(u);
+	}
+	inline void subX(int s, int u) { 
+		X[s].pop(u);
 	}
 
 	inline void moveC2S(int s, int u) { 

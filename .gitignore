@@ -17,4 +17,5 @@ data*
 bin
 test*
 result*
-res.xlsx
+*.xlsx
+

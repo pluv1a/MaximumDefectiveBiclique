@@ -30,7 +30,8 @@ using namespace logging;
 // }
 
 
-void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
+void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int numFakes, int numK) {
+
 	BiGraph G(dataPath);
 	logBiGraph(G);
 
@@ -38,15 +39,17 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 	int fak[2] = {0};
 	for (int s = 0; s <= 1; ++s) {
 		for (int v : sub.V[s]) 
-			if (v >= G.n[s]-50)
+			if (v >= G.n[s] - numFakes)
 				++fak[s];
 	}
 
-	log("total: [%d, %d], fake: [%d, %d]", sub.V[0].size(), sub.V[1].size(), fak[0], fak[1]);
+	log("(%d, %d)-core: total: [%d, %d], fake: [%d, %d]", q[0], 4, sub.V[0].size(), sub.V[1].size(), fak[0], fak[1]);
 
-	return;
+	// return;
 
-	lb[0] = 4;
+	q[0] = 4;
+
+	lb[0] = q[0];
 	lb[1] = q[1];
 	MDB::k = k;
 	MDB::flags = flags;
@@ -137,7 +140,8 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		searchTime, branchTime, numBranches, numPivoting, numBipartite, numUbPruned);
 
 	VertexSet T[2];
-	int numTopK = topK.size(), numK = 2000;
+	int numTopK = topK.size();
+	log("numTopK: %d", numTopK);
 	while (!topK.empty() && numK--) {
 		SubGraph sub = topK.top(); topK.pop();
 		for (int s = 0; s <= 1; ++s) {
@@ -149,7 +153,7 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 	int fake[2] = {0};
 	for (int s = 0; s <= 1; ++s) {
 		for (int v : T[s]) 
-			if (v >= G.n[s]-50)
+			if (v >= G.n[s] - numFakes)
 				++fake[s];
 	}
 

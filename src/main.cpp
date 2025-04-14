@@ -22,12 +22,16 @@ int main(int argc, char *argv[]) {
 	args.add("no-queue", '\0', "disable queueing in update");
 	args.add("no-heu", '\0', "disable heuristic algorithm");
 	args.add("debug", '\0', "output intermediate data");
+	args.add<int>("num-fakes", '\0', "number of fake objects", false, 100);
+	args.add<int>("num-K", 'K', "number of top-K MDB", false, 2000);
 	args.parse_check(argc, argv);
 
 
 	auto dataPath = args.get<std::string>("data");
 	int k = args.get<int>("key");
 	int lb[2] = {args.get<int>("lb"), args.get<int>("lb")};
+	int numFakes = args.get<int>("num-fakes");
+	int numK = args.get<int>("num-K");
 	int flags = !args.exist("no-order") * FLAG_ORDER \
 			| !args.exist("no-queue") * FLAG_QUEUE \
 			| !args.exist("no-core") * FLAG_CORE \
@@ -47,11 +51,11 @@ int main(int argc, char *argv[]) {
 
 
 	if (args.get<std::string>("algo")[0] == 'p') 
-		MDBP::run(dataPath, lb, k, flags);
+		MDBP::run(dataPath, lb, k, flags, numFakes, numK);
 	else if (args.get<std::string>("algo") == "mdc")
 		MDC::run(dataPath, lb, k, flags);
 	else
-		MDBB::run(dataPath, lb, k, flags);
+		MDBB::run(dataPath, lb, k, flags, numFakes, numK);
 
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
 		std::chrono::steady_clock::now() - startTimePoint);

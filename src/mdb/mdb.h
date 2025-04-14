@@ -43,7 +43,7 @@ struct SubGraph {
 
 class MDB {
 public:
-	void findMDB(const std::string &dataPath, int q[2], int k, int flags=7);
+	void findMDB(const std::string &dataPath, int q[2], int k, int flags=7, int numFakes=100, int numK=2000);
 protected:
 	VertexSet Ss[2], S[2], C[2], X[2];
 	int k, numNnbS, numNnbSs, lb[2], flags;

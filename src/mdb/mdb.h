@@ -36,6 +36,7 @@ protected:
 	// std::vector<CuckooHash> coexist[2];
 	BiGraph G;
 	int branchTime, reductionTime, numBranches, numUbPruned, numPivoting, numBipartite;
+	int numDefBicliques;
 
 	struct BakPos {
 		int p[2][2];
@@ -62,9 +63,9 @@ protected:
 
 	// void cnExclusion(BiGraph &g, int q[2], int k);
 	
-	BakPos update(int uSide, int u);
-	BakPos minus(int uSide, int u);
-	void restore(BakPos &pos);
+	std::pair<BakPos, BakPos> update(int uSide, int u);
+	std::pair<BakPos, BakPos> minus(int uSide, int u);
+	void restore(std::pair<BakPos, BakPos> &pos);
 
 	inline void addS(int s, int u) { 
 		S[s].push(u);
@@ -102,6 +103,22 @@ protected:
 		}
 		numNnbS -= nnbS(s, u);
 	}
+	
+	inline void moveC2X(int s, int u) { 
+		C[s].popBack(u);
+		X[s].push(u);
+		for (int v : G.nbr[s][u]) {
+			--degC[s^1][v];
+		}
+	}
+
+	inline void moveX2C(int s, int u) { 
+		X[s].popBack(u);
+		C[s].push(u);
+		for (int v : G.nbr[s][u]) {
+			++degC[s^1][v];
+		}
+	}	
 	
 };
 

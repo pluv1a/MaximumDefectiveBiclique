@@ -42,65 +42,66 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 	numNnbS = numNnbSs = \
 	numBranches = numPivoting = numBipartite = \
 	numUbPruned = branchTime = reductionTime = 0;
+	numDefBicliques = 0;
 
 	for (int s = 0; s <= 1; ++s) {
 		Ss[s].reserve(G.n[s]);
 		S[s].reserve(G.n[s]);
 		C[s].reserve(G.n[s]);
-		// X[s].reserve(G.n[s]);
+		X[s].reserve(G.n[s]);
 		degS[s].resize(G.n[s]);
 		degC[s].resize(G.n[s]);
 		// coexist[s].resize(G.n[s]);
 	}
 
-	if (flags & FLAG_HEU) {
-		log("Start heuristic...");
-		auto heuristicStartTime = std::chrono::steady_clock::now();
-		heuristic(G);
-		int heuristicTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-heuristicStartTime).count();
-		log("Heuristic done! Time: %d ms", heuristicTime);
-		log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
-		logSetInfo(Ss[0], "U*");
-		logSetInfo(Ss[1], "V*");
+	// if (flags & FLAG_HEU) {
+	// 	log("Start heuristic...");
+	// 	auto heuristicStartTime = std::chrono::steady_clock::now();
+	// 	heuristic(G);
+	// 	int heuristicTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-heuristicStartTime).count();
+	// 	log("Heuristic done! Time: %d ms", heuristicTime);
+	// 	log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
+	// 	logSetInfo(Ss[0], "U*");
+	// 	logSetInfo(Ss[1], "V*");
 
-	}
+	// }
 	
-	log("Start searching...");
+	log("Start enumerating...");
 	auto searchStartTime = std::chrono::steady_clock::now();
 	BiGraph &Sub = this->G;
 
-	if (flags & FLAG_PB) {
-		lb[0] = G.maxDeg[1]+k;
-		while (lb[0] > q[0]) {
-			MDB::lb[1] = std::max(q[1], numEdgesSs / lb[0]);
-			MDB::lb[0] = std::max(q[0], lb[0] >> 1);
-			log("*** lb = (%d, %d) ***", lb[0], lb[1]);
+	// if (flags & FLAG_PB) {
+	// 	lb[0] = G.maxDeg[1]+k;
+	// 	while (lb[0] > q[0]) {
+	// 		MDB::lb[1] = std::max(q[1], numEdgesSs / lb[0]);
+	// 		MDB::lb[0] = std::max(q[0], lb[0] >> 1);
+	// 		log("*** lb = (%d, %d) ***", lb[0], lb[1]);
 
-			Sub = (flags & FLAG_CORE) ? core(G, lb[1]-k, lb[0]-k) : G;
-			logBiGraph(Sub);
+	// 		Sub = (flags & FLAG_CORE) ? core(G, lb[1]-k, lb[0]-k) : G;
+	// 		logBiGraph(Sub);
 
-			if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
+	// 		if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
 
-			if (flags & FLAG_CN) Sub = comm(Sub, lb, k);
-			logBiGraph(Sub);
+	// 		if (flags & FLAG_CN) Sub = comm(Sub, lb, k);
+	// 		logBiGraph(Sub);
 
-			if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
+	// 		if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
 
-			// cnExclusion(Sub, lb, k);
+	// 		// cnExclusion(Sub, lb, k);
 
-			auto branchStartTime = std::chrono::steady_clock::now();
-			if ((flags & FLAG_ORDER) && lb[0] > k && lb[1] > k) {
-				log("Search scheme: RussianDoll"); 
-				russianDoll();
-			} 
-			else {
-				log("Search scheme: All");
-				searchAll(); 
-			}
-			branchTime += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - branchStartTime).count();
-		}
-	}
-	else {
+	// 		auto branchStartTime = std::chrono::steady_clock::now();
+	// 		if ((flags & FLAG_ORDER) && lb[0] > k && lb[1] > k) {
+	// 			log("Search scheme: RussianDoll"); 
+	// 			russianDoll();
+	// 		} 
+	// 		else {
+	// 			log("Search scheme: All");
+	// 			searchAll(); 
+	// 		}
+	// 		branchTime += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - branchStartTime).count();
+	// 	}
+	// }
+	// else {
 		log("*** lb = (%d, %d) ***", lb[0], lb[1]);
 
 		Sub = (flags & FLAG_CORE) ? core(G, lb[1]-k, lb[0]-k) : G;
@@ -119,20 +120,21 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 			searchAll(); 
 		}
 		branchTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - branchStartTime).count();
-	}
+	// }
 	int searchTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - searchStartTime).count();
 	log("Searching done! Total time: %d ms, Branch time: %d ms, branch num: %d (pivoting: %d, bipartite: %d), ub pruned num: %d", 
 		searchTime, branchTime, numBranches, numPivoting, numBipartite, numUbPruned);
+	log("Number of %d-defective bicliques: %d", k, numDefBicliques);
 
-	log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
-	logSetInfo(Ss[0], "U*");
-	logSetInfo(Ss[1], "V*");
+	// log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
+	// logSetInfo(Ss[0], "U*");
+	// logSetInfo(Ss[1], "V*");
 
-	log("Missing edges:");
-	for (int u : Ss[0])
-		for (int v : Ss[1])
-			if (!G.connect(u, v))
-				log("(%d, %d)", u, v);
+	// log("Missing edges:");
+	// for (int u : Ss[0])
+	// 	for (int v : Ss[1])
+	// 		if (!G.connect(u, v))
+	// 			log("(%d, %d)", u, v);
 }
 
 BiGraph MDB::core(BiGraph &G, int a, int b) {
@@ -330,7 +332,7 @@ void MDB::heuristic(BiGraph &G) {
 void MDB::searchAll() {
 	numNnbS = 0;
 	for (int s = 0; s <= 1; ++s) {
-		S[s].clear(); C[s].clear(); //X[s].clear();
+		S[s].clear(); C[s].clear(); X[s].clear();
 		for (int u : G.V[s]) {
 			degS[s][u] = 0;
 			degC[s][u] = G.degree(s, u);
@@ -367,11 +369,14 @@ void MDB::russianDoll() {
 	auto prune = [&]() {
 		for (int s = 0; s <= 1; ++s) {
 			q[s].clear();
-			for (int v : S[s]) if (degC[s][v]+degS[s][v] < lb[s^1]-k)
+			for (int v : S[s]) if (degSub(s, v) < lb[s^1]-k)
 				return false;
-			for (int v : C[s]) if (degC[s][v]+degS[s][v] < lb[s^1]-k) {
+			for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k) {
 				q[s].push_back(v);
 				C[s].pop(v);
+			}
+			for (int v : X[s]) if (degSub(s, v) < lb[s^1]-k) {
+				X[s].pop(v);
 			}
 		}
 
@@ -393,6 +398,7 @@ void MDB::russianDoll() {
 				}
 			}
 		}
+
 		return true;
 	};
 
@@ -415,52 +421,60 @@ void MDB::russianDoll() {
 		for (int s = 0; s <= 1; ++s) {
 			S[s].clear();
 			C[s].clear();
-			//X[s].clear();
+			X[s].clear();
 		}
 
 
 		S[uSide].push(u);
 		degS[uSide][u] = degC[uSide][u] = 0;
-		//X[uSide].push(u);
 
 		for (int v : G.nbr[uSide][u]) {
 			if (!C[uSide^1].inside(v)) {
 				degS[uSide^1][v] = degC[uSide^1][v] = 0;
 				C[uSide^1].push(v);	
 			}
-			//X[uSide^1].push(v);	
 			++degC[uSide][u]; 
 			++degS[uSide^1][v];
-			for (int w : G.nbr[uSide^1][v]) if (w != u && o.order[w+uSide*G.n[0]] > i) {
-				if (!C[uSide].inside(w)) {
-					degS[uSide][w] = degC[uSide][w] = 0;
-					C[uSide].push(w); 
+			for (int w : G.nbr[uSide^1][v]) if (w != u) {
+				if (o.order[w+uSide*G.n[0]] > i) {
+					if (!C[uSide].inside(w)) {
+						degS[uSide][w] = degC[uSide][w] = 0;
+						C[uSide].push(w); 
+					}
+					++degC[uSide^1][v]; 
+					++degC[uSide][w];
 				}
-				//X[uSide].push(w); 
-				++degC[uSide^1][v]; 
-				++degC[uSide][w];
+				else { 
+					if (!X[uSide].inside(w)) {
+						degS[uSide][w] = degC[uSide][w] = 0;
+						X[uSide].push(w);
+					}
+					++degC[uSide][w];
+				}
 			}
 		}
 
 
 		if (!prune()) continue;
+
+		if (k > 0) {
 		
-		for (int w : C[uSide]) {
-			for (int x : G.nbr[uSide][w]) if (!G.connect(uSide, u, x)) {
-				if (!C[uSide^1].inside(x)) {
-					degS[uSide^1][x] = degC[uSide^1][x] = 0;
-					C[uSide^1].push(x);
+			for (int w : C[uSide]) {
+				for (int x : G.nbr[uSide][w]) if (!G.connect(uSide, u, x)) {
+					if (!C[uSide^1].inside(x)) {
+						degS[uSide^1][x] = degC[uSide^1][x] = 0;
+						C[uSide^1].push(x);
+					}
+					++degC[uSide][w];
+					++degC[uSide^1][x];
 				}
-				//X[uSide^1].push(x);
-				++degC[uSide][w];
-				++degC[uSide^1][x];
 			}
+
+			if (!prune()) continue;
 		}
 
-		if (!prune()) continue;
 
-
-		this->G.subGraph(G, S, C);
+		this->G.subGraph(G, S, C, X);
 
 		// for (int s = 0; s <= 1; ++s) {
 		// 	for (int v : Sub.V[s]) {
@@ -494,8 +508,6 @@ void MDB::russianDoll() {
 
 bool MDB::upperbound() {
 
-	// if (!(flags & FLAG_UB)) return true;
-
 	for (int s = 0; s <= 1; ++s) {
 		for (int u : S[s]) if (degSub(s, u) < lb[s^1]-k)
 			return false;
@@ -527,26 +539,27 @@ bool MDB::upperbound() {
 	if (num[0]+S[0].size() < lb[0] || num[1]+S[1].size() < lb[1]) return false;
 
 
-	int s = (int)(num[0] > num[1]);
-	long long numEdges = (long long)S[s].size() * (num[s^1] + S[s^1].size()) - numNnbS - sum[s^1];
+	// int s = (int)(num[0] > num[1]);
+	// long long numEdges = (long long)S[s].size() * (num[s^1] + S[s^1].size()) - numNnbS - sum[s^1];
 
-	sum[s] = num[s] = 0;
+	// sum[s] = num[s] = 0;
 
-	for (int i = 0, j = idx[s^1]; i <= idx[s] && j >= 0; ++i) {
-		while (bin[s][i]--) {
-			while (j > 0 && sum[0]+sum[1]+i > k-numNnbS) {
-				int x = std::min(bin[s^1][j], (sum[0]+sum[1]+i-k+numNnbS-1)/j + 1);
-				sum[s^1] -= x*j; num[s^1] -= x; bin[s^1][j] -= x;
-				j -= (int)(!bin[s^1][j]);
-			}
-			if (sum[0]+i+sum[1] > k-numNnbS) return numEdges > numEdgesSs;
-			sum[s] += i; ++num[s];
-			numEdges = std::max(numEdges, (long long)(num[0] + S[0].size())*(num[1] + S[1].size())-numNnbS-sum[0]-sum[1]);
-			if (numEdges > numEdgesSs) return true;
-		}
-	}
+	// for (int i = 0, j = idx[s^1]; i <= idx[s] && j >= 0; ++i) {
+	// 	while (bin[s][i]--) {
+	// 		while (j > 0 && sum[0]+sum[1]+i > k-numNnbS) {
+	// 			int x = std::min(bin[s^1][j], (sum[0]+sum[1]+i-k+numNnbS-1)/j + 1);
+	// 			sum[s^1] -= x*j; num[s^1] -= x; bin[s^1][j] -= x;
+	// 			j -= (int)(!bin[s^1][j]);
+	// 		}
+	// 		if (sum[0]+i+sum[1] > k-numNnbS) return numEdges > numEdgesSs;
+	// 		sum[s] += i; ++num[s];
+	// 		numEdges = std::max(numEdges, (long long)(num[0] + S[0].size())*(num[1] + S[1].size())-numNnbS-sum[0]-sum[1]);
+	// 		if (numEdges > numEdgesSs) return true;
+	// 	}
+	// }
 
-	return numEdges > numEdgesSs;
+	// return numEdges > numEdgesSs;
+	return true;
 }
 
 bool MDB::upperbound(int uSide, int u) {
@@ -578,11 +591,12 @@ bool MDB::upperbound(int uSide, int u) {
 }
 
 
-MDB::BakPos MDB::update(int uSide, int u) {
+std::pair<MDB::BakPos, MDB::BakPos> MDB::update(int uSide, int u) {
 	using namespace traversal;
 
-	BakPos pos;
-	pos.backup(C);
+	BakPos posC, posX;
+	posC.backup(C);
+	posX.backup(X);
 
 	moveC2S(uSide, u);
 
@@ -594,10 +608,13 @@ MDB::BakPos MDB::update(int uSide, int u) {
 				subC(s, v);
 			}
 		}
+		for (int v : X[s]) {
+			if (numNnbS + nnbS(s, v) > k)
+				X[s].pop(v);
+		}
 	}
 	static std::vector<int> q[2];
 	q[0].clear(); q[1].clear();
-
 	//if (flags & FLAG_CORE) {
 		for (int s = 0; s <= 1; ++s) {
 			for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
@@ -651,21 +668,23 @@ MDB::BakPos MDB::update(int uSide, int u) {
 	}
 
 	for (int s = 0; s <= 1; ++s) {
+		if (X[s^1].size() != 0) continue;
 		for (int v : reverse(C[s])) if (nnbSub(s, v) == 0) {
 			moveC2S(s, v);
 		}
 	}
 
-	return pos;
+	return {posC, posX};
 }
 
-MDB::BakPos MDB::minus(int uSide, int u) {
+std::pair<MDB::BakPos, MDB::BakPos> MDB::minus(int uSide, int u) {
 	using namespace traversal;
 
-	BakPos pos;
-	pos.backup(C);
+	BakPos posC, posX;
+	posC.backup(C);
+	posX.backup(X);
 
-	subC(uSide, u);
+	moveC2X(uSide, u);
 
 	// u has 1 non-neighbor
 	if ((flags & FLAG_1NN) && nnbS(uSide, u) + nnbC(uSide, u) == 1) {
@@ -712,25 +731,31 @@ MDB::BakPos MDB::minus(int uSide, int u) {
 	//pos.backup(1, C);
 
 	for (int s = 0; s <= 1; ++s) {
+		if (X[s^1].size() != 0) continue;
 		for (int v : reverse(C[s])) if (nnbSub(s, v) == 0) {
 			moveC2S(s, v);
 		}
 	}
 
-	return pos;
+	return {posC, posX};
 }
 
 
-void MDB::restore(BakPos &pos) {
+void MDB::restore(std::pair<MDB::BakPos, MDB::BakPos> &pos) {
 	for (int s = 0; s <= 1; ++s) {
-		for (int i = C[s].backPos(); i < pos.p[1][s]; ++i) {
-			moveS2C(s, C[s][i]);
+		for (int i = C[s].frontPos()-1; i >= pos.first.p[0][s]; --i) {
+			addC(s, C[s][i]);
+		}
+		for (int i = X[s].frontPos()-1; i >= pos.second.p[0][s]; --i) {
+			X[s].push(X[s][i]);
 		}
 	}
-
 	for (int s = 0; s <= 1; ++s) {
-		for (int i = C[s].frontPos()-1; i >= pos.p[0][s]; --i) {
-			addC(s, C[s][i]);
+		for (int i = C[s].backPos(); i < pos.first.p[1][s]; ++i) {
+			if (S[s].inside(C[s][i]))
+				moveS2C(s, C[s][i]);
+			else if (X[s].inside(C[s][i]))
+				moveX2C(s, C[s][i]);
 		}
 	}
 }

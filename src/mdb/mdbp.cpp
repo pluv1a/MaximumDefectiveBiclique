@@ -18,30 +18,36 @@ void MDBP::branch(int dep) {
 		logSet(S[1]);
 		logSet(C[0]);
 		logSet(C[1]);
-		for (int s = 0; s <= 1; ++s) {
-			for (int u : G.V[s]) {
-				int degSu = 0, degCu = 0;
-				for (int v : G.nbr[s][u]) {
-					if (S[s^1].inside(v)) ++degSu;
-					if (C[s^1].inside(v)) ++degCu;
-				}
-				if (degSu != degS[s][u] || degCu != degC[s][u]) {
-					log("Wrong degree of %d-%d", s, u);
-				}
-			}
-		}
+		logSet(X[0]);
+		logSet(X[1]);
+		// for (int s = 0; s <= 1; ++s) {
+		// 	for (int u : G.V[s]) {
+		// 		int degSu = 0, degCu = 0;
+		// 		for (int v : G.nbr[s][u]) {
+		// 			if (S[s^1].inside(v)) ++degSu;
+		// 			if (C[s^1].inside(v)) ++degCu;
+		// 		}
+		// 		if (degSu != degS[s][u] || degCu != degC[s][u]) {
+		// 			log("Wrong degree of %d-%d", s, u);
+		// 		}
+		// 	}
+		// }
 	}
 
 
 	if (C[0].size() == 0 && C[1].size() == 0) {
-		if (S[0].size() >= lb[0] && S[1].size() >= lb[1] && numEdgesS > numEdgesSs) {
-			Ss[0].clear(); Ss[1].clear();
-			for (int u : S[0]) Ss[0].push(u);
-			for (int v : S[1]) Ss[1].push(v);
-			numNnbSs = numNnbS;
-			log("New S*! |E|=%d", numEdgesSs);
-			// logSet(Ss[0]);
-			// logSet(Ss[1]);
+		if (X[0].size() == 0 && X[1].size() == 0)
+		if (S[0].size() >= lb[0] && S[1].size() >= lb[1]) {
+			// Ss[0].clear(); Ss[1].clear();
+			// for (int u : S[0]) Ss[0].push(u);
+			// for (int v : S[1]) Ss[1].push(v);
+			// numNnbSs = numNnbS;
+			++numDefBicliques;
+			if (flags & FLAG_DEBUG) {
+				log("New S*! |E|=%d", numEdgesS);
+				logSet(S[0]);
+				logSet(S[1]);
+			}
 		}
 		return;
 	}
@@ -49,10 +55,10 @@ void MDBP::branch(int dep) {
 	if (S[0].size()+C[0].size()<lb[0] || S[1].size()+C[1].size()<lb[1]) return;
 
 	if (flags & FLAG_UB) {
-		int numEdgesSub = 0, s = (int)(S[0].size()+C[0].size() > S[1].size()+C[1].size());
-		for (int v : S[s]) numEdgesSub += degSub(s, v);
-		for (int v : C[s]) numEdgesSub += degSub(s, v);
-		if (numEdgesSub <= numEdgesSs) return;
+	// 	int numEdgesSub = 0, s = (int)(S[0].size()+C[0].size() > S[1].size()+C[1].size());
+	// 	for (int v : S[s]) numEdgesSub += degSub(s, v);
+	// 	for (int v : C[s]) numEdgesSub += degSub(s, v);
+	// 	if (numEdgesSub <= numEdgesSs) return;
 
 		if (!upperbound()) { ++numUbPruned; return; }
 	}
@@ -88,8 +94,9 @@ void MDBP::branch(int dep) {
 
 		++numPivoting;
 
-		BakPos pos0;
-		pos0.backup(C);
+		BakPos posC, posX;
+		posC.backup(C);
+		posX.backup(X);
 
 		std::vector<int> cand;
 		for (int v : C[uSide^1]) if (!G.connect(uSide, u, v))
@@ -141,7 +148,9 @@ void MDBP::branch(int dep) {
 		}
 
 		// pos0.backup(1, C);
-		restore(pos0);
+
+		auto pos = std::make_pair(posC, posX);
+		restore(pos);
 
 	}
 
@@ -179,6 +188,8 @@ void MDBP::branch(int dep) {
 		// logSet(S[1]);
 		// logSet(C[0]);
 		// logSet(C[1]);
+		// logSet(X[0]);
+		// logSet(X[1]);
 	}
 
 }

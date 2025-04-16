@@ -14,8 +14,8 @@ _deps
 sftp-config.json
 *.out
 data*
-bin
+bin/
 test*
 result*
 *.xlsx
-
+build/

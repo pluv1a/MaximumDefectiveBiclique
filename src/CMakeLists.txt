@@ -5,7 +5,7 @@ include_directories(utils defbiclique)
 add_subdirectory(utils)
 add_subdirectory(mdb)
 
-set(EXECUTABLE_NAME run)
+set(EXECUTABLE_NAME runp)
 
 add_executable(${EXECUTABLE_NAME} main.cpp)
 target_link_libraries(${EXECUTABLE_NAME} utils mdb)

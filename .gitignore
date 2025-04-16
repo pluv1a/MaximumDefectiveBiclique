@@ -18,4 +18,5 @@ bin
 test*
 result*
 *.xlsx
+build
 

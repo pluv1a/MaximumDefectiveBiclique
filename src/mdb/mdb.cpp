@@ -8,6 +8,7 @@
 #include <queue>
 
 using namespace logging;
+#define NUM_THREADS 1
 
 // #define PIVOTING_V2
 
@@ -185,6 +186,7 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	Ordering o;
 	o.degeneracyOrdering(G);
 	for (int t = 0; t < COMM_ROUNDS; ++t) {
+		#pragma omp parallel for num_threads(NUM_THREADS) firstprivate(cn)
 		for (int i = 0; i < o.numOrdered; ++i) {
 			//fprintf(stderr, "\rCommon Neighbor Reduction: %d/%d", o.numOrdered-i, o.numOrdered);
 			int s = o.ordered[i] >= G.n[0];
@@ -209,8 +211,12 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 
 			if (cntv < q[s^1]-k) {
 				visv[s][u] = true;
-				for (int v : G.nbr[s][u]) if (--deg[s^1][v] < q[s]-k)
-					visv[s^1][v] = true;
+				for (int v : G.nbr[s][u]) {
+					#pragma omp atomic
+					--deg[s^1][v];
+					if (deg[s^1][v] < q[s]-k)
+						visv[s^1][v] = true;
+				}
 			}
 		}
 	}
@@ -356,10 +362,10 @@ void MDB::russianDoll() {
 
 	// };
 
-	BiGraph G = std::move(this->G);
-	this->G.clear();
+	BiGraph G0 = std::move(G);
+	G.clear();
 	for (int s = 0; s <= 1; ++s)
-		this->G.nbrMap[s] = G.nbrMap[s];
+		G.nbrMap[s] = G0.nbrMap[s];
 
 	//this->G = G;
 
@@ -380,7 +386,7 @@ void MDB::russianDoll() {
 				while (!q[s].empty()) {
 					int v = q[s].back(); q[s].pop_back();
 					//log("Prune: %d-%d", s, v);
-					for (int w : G.nbr[s][v]) if (S[s^1].inside(w) || C[s^1].inside(w)) {
+					for (int w : G0.nbr[s][v]) if (S[s^1].inside(w) || C[s^1].inside(w)) {
 						if (--degC[s^1][w]+degS[s^1][w] < lb[s]-k) {
 							if (C[s^1].inside(w)) {
 								q[s^1].push_back(w);
@@ -405,6 +411,7 @@ void MDB::russianDoll() {
 
 
 	// for (int i = 0; i < o.numOrdered; ++i) {
+	#pragma omp parallel for num_threads(NUM_THREADS) firstprivate(G, S, C, degS, degC, numNnbS, q)
 	for (int i = o.numOrdered-1; i >= 0; --i) {
 		int uSide = o.ordered[i] >= G.n[0];
 		int u = o.ordered[i] - uSide * G.n[0];
@@ -431,7 +438,7 @@ void MDB::russianDoll() {
 			//X[uSide^1].push(v);	
 			++degC[uSide][u]; 
 			++degS[uSide^1][v];
-			for (int w : G.nbr[uSide^1][v]) if (w != u && o.order[w+uSide*G.n[0]] > i) {
+			for (int w : G0.nbr[uSide^1][v]) if (w != u && o.order[w+uSide*G0.n[0]] > i) {
 				if (!C[uSide].inside(w)) {
 					degS[uSide][w] = degC[uSide][w] = 0;
 					C[uSide].push(w); 
@@ -444,23 +451,26 @@ void MDB::russianDoll() {
 
 
 		if (!prune()) continue;
+
+		if (k > 0) {
 		
-		for (int w : C[uSide]) {
-			for (int x : G.nbr[uSide][w]) if (!G.connect(uSide, u, x)) {
-				if (!C[uSide^1].inside(x)) {
-					degS[uSide^1][x] = degC[uSide^1][x] = 0;
-					C[uSide^1].push(x);
+			for (int w : C[uSide]) {
+				for (int x : G0.nbr[uSide][w]) if (!G0.connect(uSide, u, x)) {
+					if (!C[uSide^1].inside(x)) {
+						degS[uSide^1][x] = degC[uSide^1][x] = 0;
+						C[uSide^1].push(x);
+					}
+					//X[uSide^1].push(x);
+					++degC[uSide][w];
+					++degC[uSide^1][x];
 				}
-				//X[uSide^1].push(x);
-				++degC[uSide][w];
-				++degC[uSide^1][x];
 			}
+
+			if (!prune()) continue;
 		}
 
-		if (!prune()) continue;
 
-
-		this->G.subGraph(G, S, C);
+		G.subGraph(G0, S, C);
 
 		// for (int s = 0; s <= 1; ++s) {
 		// 	for (int v : Sub.V[s]) {

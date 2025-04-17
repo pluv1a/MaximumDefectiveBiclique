@@ -1,3 +1,4 @@
+#pragma once
 #ifndef MDB_H
 #define MDB_H
 
@@ -26,15 +27,16 @@
 #define FLAG_HEU			(1<<8)
 #define FLAG_BR				(1<<9)
 
+
 class MDB {
 public:
 	void findMDB(const std::string &dataPath, int q[2], int k, int flags=7);
-protected:
-	VertexSet Ss[2], S[2], C[2], X[2];
-	int k, numNnbS, numNnbSs, lb[2], flags;
-	std::vector<int> degS[2], degC[2];
-	// std::vector<CuckooHash> coexist[2];
-	BiGraph G;
+	VertexSet Ss[2];
+	int numNnbSs, k, lb[2], flags;
+	thread_local static VertexSet S[2], C[2], X[2];
+	thread_local static int numNnbS;
+	thread_local static std::vector<int> degS[2], degC[2];
+	thread_local static BiGraph G;
 	int branchTime, reductionTime, numBranches, numUbPruned, numPivoting, numBipartite;
 
 	struct BakPos {
@@ -82,6 +84,7 @@ protected:
 		C[s].pop(u);
 		for (int v : G.nbr[s][u]) --degC[s^1][v];
 	}
+
 
 	inline void moveC2S(int s, int u) { 
 		numNnbS += nnbS(s, u);

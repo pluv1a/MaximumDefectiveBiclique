@@ -8,7 +8,7 @@
 #include <queue>
 
 using namespace logging;
-#define NUM_THREADS 1
+#define NUM_THREADS 10
 
 // #define PIVOTING_V2
 
@@ -30,6 +30,10 @@ using namespace logging;
 // 	}
 // }
 
+thread_local VertexSet MDB::S[2], MDB::C[2], MDB::X[2];
+thread_local std::vector<int> MDB::degS[2], MDB::degC[2];
+thread_local BiGraph MDB::G;
+thread_local int MDB::numNnbS;
 
 void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 	BiGraph G(dataPath);
@@ -46,11 +50,14 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 
 	for (int s = 0; s <= 1; ++s) {
 		Ss[s].reserve(G.n[s]);
-		S[s].reserve(G.n[s]);
-		C[s].reserve(G.n[s]);
-		// X[s].reserve(G.n[s]);
-		degS[s].resize(G.n[s]);
-		degC[s].resize(G.n[s]);
+		#pragma omp parallel num_threads(NUM_THREADS)
+		{
+			S[s].reserve(G.n[s]);
+			C[s].reserve(G.n[s]);
+			// X[s].reserve(G.n[s]);
+			degS[s].resize(G.n[s]);
+			degC[s].resize(G.n[s]);
+		}
 		// coexist[s].resize(G.n[s]);
 	}
 
@@ -177,7 +184,12 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	std::vector<bool> visv[2] = {std::vector<bool>(G.n[0]), std::vector<bool>(G.n[1])};
 	std::vector<int> deg[2] = {std::vector<int>(G.n[0]), std::vector<int>(G.n[1])};
 	std::vector<CuckooHash> vise(G.n[0]);
-	std::vector<int> cn(std::max(G.n[0], G.n[1]));
+	thread_local static std::vector<int> cn(std::max(G.n[0], G.n[1]));
+
+	#pragma omp parallel num_threads(NUM_THREADS*2)
+	{
+		cn.resize(std::max(G.n[0], G.n[1]));
+	}
 
 	for (int s = 0; s <= 1; ++s)
 		for (int v : G.V[s])
@@ -186,7 +198,7 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	Ordering o;
 	o.degeneracyOrdering(G);
 	for (int t = 0; t < COMM_ROUNDS; ++t) {
-		#pragma omp parallel for num_threads(NUM_THREADS) firstprivate(cn)
+		#pragma omp parallel for num_threads(NUM_THREADS*2)
 		for (int i = 0; i < o.numOrdered; ++i) {
 			//fprintf(stderr, "\rCommon Neighbor Reduction: %d/%d", o.numOrdered-i, o.numOrdered);
 			int s = o.ordered[i] >= G.n[0];
@@ -204,7 +216,12 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 				int cntw = 0;
 				if (visv[s^1][v] || (s ? vise[v].find(u) : vise[u].find(v))) continue;
 				for (int w : G.nbr[s^1][v]) if (!visv[s][w] && cn[w] >= q[s^1]-k && ++cntw >= q[s]-k) break;
-				if (cntw < q[s]-k) s ? vise[v].insert(u) : vise[u].insert(v);
+				if (cntw < q[s]-k) {
+					#pragma omp critical(vise) 
+					{
+						s ? vise[v].insert(u) : vise[u].insert(v);
+					}
+				}
 				else if (++cntv >= q[s^1]-k) break;
 			}
 
@@ -349,7 +366,8 @@ void MDB::searchAll() {
 
 void MDB::russianDoll() {
 	static Ordering o;
-	static std::vector<int> q[2];
+	thread_local static std::vector<int> q[2];
+
 	int tSide = G.maxDeg[1] > G.maxDeg[0];	
 
 	// auto addNbr2C = [&](int uSide, int u, int rk) {
@@ -363,11 +381,6 @@ void MDB::russianDoll() {
 	// };
 
 	BiGraph G0 = std::move(G);
-	G.clear();
-	for (int s = 0; s <= 1; ++s)
-		G.nbrMap[s] = G0.nbrMap[s];
-
-	//this->G = G;
 
 
 	auto prune = [&]() {
@@ -402,19 +415,24 @@ void MDB::russianDoll() {
 		return true;
 	};
 
-	o.degeneracyOrdering(G);
+	o.degeneracyOrdering(G0);
 
-	for (int s = 0; s <= 1; ++s) {
-		degS[s].assign(G.n[s], 0);
-		degC[s].assign(G.n[s], 0);
+	#pragma omp parallel num_threads(NUM_THREADS)
+	{
+		for (int s = 0; s <= 1; ++s) {
+			degS[s].assign(G0.n[s], 0);
+			degC[s].assign(G0.n[s], 0);
+		}
+		G.clear();
+		for (int s = 0; s <= 1; ++s)
+			G.nbrMap[s] = G0.nbrMap[s];
 	}
 
 
-	// for (int i = 0; i < o.numOrdered; ++i) {
-	#pragma omp parallel for num_threads(NUM_THREADS) firstprivate(G, S, C, degS, degC, numNnbS, q)
+	#pragma omp parallel for num_threads(NUM_THREADS)
 	for (int i = o.numOrdered-1; i >= 0; --i) {
-		int uSide = o.ordered[i] >= G.n[0];
-		int u = o.ordered[i] - uSide * G.n[0];
+		int uSide = o.ordered[i] >= G0.n[0];
+		int u = o.ordered[i] - uSide * G0.n[0];
 
 		if (uSide != tSide) continue;
 
@@ -422,20 +440,17 @@ void MDB::russianDoll() {
 		for (int s = 0; s <= 1; ++s) {
 			S[s].clear();
 			C[s].clear();
-			//X[s].clear();
 		}
 
 
 		S[uSide].push(u);
 		degS[uSide][u] = degC[uSide][u] = 0;
-		//X[uSide].push(u);
 
-		for (int v : G.nbr[uSide][u]) {
+		for (int v : G0.nbr[uSide][u]) {
 			if (!C[uSide^1].inside(v)) {
 				degS[uSide^1][v] = degC[uSide^1][v] = 0;
 				C[uSide^1].push(v);	
 			}
-			//X[uSide^1].push(v);	
 			++degC[uSide][u]; 
 			++degS[uSide^1][v];
 			for (int w : G0.nbr[uSide^1][v]) if (w != u && o.order[w+uSide*G0.n[0]] > i) {
@@ -443,7 +458,6 @@ void MDB::russianDoll() {
 					degS[uSide][w] = degC[uSide][w] = 0;
 					C[uSide].push(w); 
 				}
-				//X[uSide].push(w); 
 				++degC[uSide^1][v]; 
 				++degC[uSide][w];
 			}
@@ -511,7 +525,7 @@ bool MDB::upperbound() {
 			return false;
 	}
 
-	static std::vector<int> bin[2] = {std::vector<int>(k+1), std::vector<int>(k+1)};
+	thread_local static std::vector<int> bin[2] = {std::vector<int>(k+1), std::vector<int>(k+1)};
 	
 	int idx[2] = {k-numNnbS, k-numNnbS}, sum[2] = {0, 0}, num[2] = {0, 0};
 
@@ -565,7 +579,7 @@ bool MDB::upperbound(int uSide, int u) {
 
 	// if (!(flags & FLAG_UB)) return true;
 
-	static std::vector<int> cn;
+	thread_local static std::vector<int> cn;
 
 	if (cn.size() < G.n[uSide]) cn.resize(G.n[uSide]);
 
@@ -605,7 +619,7 @@ MDB::BakPos MDB::update(int uSide, int u) {
 			}
 		}
 	}
-	static std::vector<int> q[2];
+	thread_local static std::vector<int> q[2];
 	q[0].clear(); q[1].clear();
 
 	//if (flags & FLAG_CORE) {
@@ -639,7 +653,7 @@ MDB::BakPos MDB::update(int uSide, int u) {
 	// 	}
 	// }
 
-	static std::vector<int> cn;
+	thread_local static std::vector<int> cn;
 
 	if (flags & FLAG_CN) {
 		if (cn.size() < G.n[uSide]) cn.resize(G.n[uSide]);
@@ -693,7 +707,7 @@ MDB::BakPos MDB::minus(int uSide, int u) {
 		}
 	}
 
-	static std::vector<int> q[2];
+	thread_local static std::vector<int> q[2];
 	q[0].clear(); q[1].clear();
 
 	//if (flags & FLAG_CORE) {

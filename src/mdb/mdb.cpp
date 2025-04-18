@@ -177,6 +177,7 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	std::vector<int> deg[2] = {std::vector<int>(G.n[0]), std::vector<int>(G.n[1])};
 	std::vector<CuckooHash> vise(G.n[0]);
 	std::vector<int> cn(std::max(G.n[0], G.n[1]));
+	std::vector<int> cnt[2] = {std::vector<int>(G.n[0]), std::vector<int>(G.n[1])};
 
 	for (int s = 0; s <= 1; ++s)
 		for (int v : G.V[s])
@@ -185,15 +186,17 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	Ordering o;
 	o.degeneracyOrdering(G);
 	for (int t = 0; t < COMM_ROUNDS; ++t) {
+	// for (int side = 0; side <= 1; ++side) {
 		for (int i = 0; i < o.numOrdered; ++i) {
 			//fprintf(stderr, "\rCommon Neighbor Reduction: %d/%d", o.numOrdered-i, o.numOrdered);
 			int s = o.ordered[i] >= G.n[0];
 			int u = o.ordered[i] - s * G.n[0];
+			// if (side != s) continue;
 			if (visv[s][u]) continue;
-			for (int v : G.nbr[s][u]) if (!visv[s^1][v] && !(s ? vise[v].find(u) : vise[u].find(v)))
+			for (int v : G.nbr[s][u]) if (!visv[s^1][v]/* && !(s ? vise[v].find(u) : vise[u].find(v))*/)
 				for (int w : G.nbr[s^1][v]) if (!visv[s][w]/* && !(s ? vise[v].find(w) : vise[w].find(v))*/)
 					cn[w] = 0;
-			for (int v : G.nbr[s][u]) if (!visv[s^1][v] && !(s ? vise[v].find(u) : vise[u].find(v)))
+			for (int v : G.nbr[s][u]) if (!visv[s^1][v]/* && !(s ? vise[v].find(u) : vise[u].find(v))*/)
 				for (int w : G.nbr[s^1][v]) if (!visv[s][w]/* && !(s ? vise[v].find(w) : vise[w].find(v))*/)
 					++cn[w];
 

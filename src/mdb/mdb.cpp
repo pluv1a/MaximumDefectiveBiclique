@@ -68,8 +68,8 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		int heuristicTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-heuristicStartTime).count();
 		log("Heuristic done! Time: %d ms", heuristicTime);
 		log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
-		logSetInfo(Ss[0], "U*");
-		logSetInfo(Ss[1], "V*");
+		// logSetInfo(Ss[0], "U*");
+		// logSetInfo(Ss[1], "V*");
 
 	}
 	
@@ -133,14 +133,14 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 		searchTime, branchTime, numBranches, numPivoting, numBipartite, numUbPruned);
 
 	log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
-	logSetInfo(Ss[0], "U*");
-	logSetInfo(Ss[1], "V*");
+	// logSetInfo(Ss[0], "U*");
+	// logSetInfo(Ss[1], "V*");
 
-	log("Missing edges:");
-	for (int u : Ss[0])
-		for (int v : Ss[1])
-			if (!G.connect(u, v))
-				log("(%d, %d)", u, v);
+	// log("Missing edges:");
+	// for (int u : Ss[0])
+	// 	for (int v : Ss[1])
+	// 		if (!G.connect(u, v))
+	// 			log("(%d, %d)", u, v);
 }
 
 BiGraph MDB::core(BiGraph &G, int a, int b) {
@@ -198,7 +198,7 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	Ordering o;
 	o.degeneracyOrdering(G);
 	for (int t = 0; t < COMM_ROUNDS; ++t) {
-		#pragma omp parallel for num_threads(NUM_THREADS*2)
+		#pragma omp parallel for num_threads(NUM_THREADS*2) schedule(dynamic)
 		for (int i = 0; i < o.numOrdered; ++i) {
 			//fprintf(stderr, "\rCommon Neighbor Reduction: %d/%d", o.numOrdered-i, o.numOrdered);
 			int s = o.ordered[i] >= G.n[0];
@@ -429,7 +429,7 @@ void MDB::russianDoll() {
 	}
 
 
-	#pragma omp parallel for num_threads(NUM_THREADS)
+	#pragma omp parallel for num_threads(NUM_THREADS) schedule(dynamic)
 	for (int i = o.numOrdered-1; i >= 0; --i) {
 		int uSide = o.ordered[i] >= G0.n[0];
 		int u = o.ordered[i] - uSide * G0.n[0];
@@ -620,7 +620,10 @@ MDB::BakPos MDB::update(int uSide, int u) {
 		}
 	}
 	thread_local static std::vector<int> q[2];
-	q[0].clear(); q[1].clear();
+	if (flags & FLAG_QUEUE) {
+		q[0].clear();
+		q[1].clear();
+	}
 
 	//if (flags & FLAG_CORE) {
 		for (int s = 0; s <= 1; ++s) {
@@ -653,26 +656,26 @@ MDB::BakPos MDB::update(int uSide, int u) {
 	// 	}
 	// }
 
-	thread_local static std::vector<int> cn;
+	// thread_local static std::vector<int> cn;
 
-	if (flags & FLAG_CN) {
-		if (cn.size() < G.n[uSide]) cn.resize(G.n[uSide]);
-		for (int w : C[uSide]) cn[w] = 0;
+	// if (flags & FLAG_CN) {
+	// 	if (cn.size() < G.n[uSide]) cn.resize(G.n[uSide]);
+	// 	for (int w : C[uSide]) cn[w] = 0;
 
-		for (int v : G.nbr[uSide][u]) if (S[uSide^1].inside(v) || C[uSide^1].inside(v)) {
-			if (C[uSide].size() < G.degree(uSide^1, v)) {
-				for (int w : C[uSide]) if (G.connect(uSide, w, v))
-					++cn[w];
-			}
-			else {
-				for (int w : G.nbr[uSide^1][v]) if (C[uSide].inside(w)) 
-					++cn[w];
-			}
-		}
+	// 	for (int v : G.nbr[uSide][u]) if (S[uSide^1].inside(v) || C[uSide^1].inside(v)) {
+	// 		if (C[uSide].size() < G.degree(uSide^1, v)) {
+	// 			for (int w : C[uSide]) if (G.connect(uSide, w, v))
+	// 				++cn[w];
+	// 		}
+	// 		else {
+	// 			for (int w : G.nbr[uSide^1][v]) if (C[uSide].inside(w)) 
+	// 				++cn[w];
+	// 		}
+	// 	}
 
-		for (int w : C[uSide]) if (/*w != u && */cn[w] < lb[uSide^1]-k+numNnbS-nnbS(uSide,u))
-			subC(uSide, w);
-	}
+	// 	for (int w : C[uSide]) if (/*w != u && */cn[w] < lb[uSide^1]-k+numNnbS-nnbS(uSide,u))
+	// 		subC(uSide, w);
+	// }
 
 	for (int s = 0; s <= 1; ++s) {
 		for (int v : reverse(C[s])) if (nnbSub(s, v) == 0) {

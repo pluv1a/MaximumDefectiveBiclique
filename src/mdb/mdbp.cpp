@@ -6,9 +6,9 @@ using namespace logging;
 
 // #define PIVOTING_V2
 
-void MDBP::run(const std::string &dataPath, int q[2], int k, int flags) {
+void MDBP::run(const std::string &dataPath, int q[2], int k, int flags, int numThreads) {
 	MDBP solver;
-	solver.findMDB(dataPath, q, k, flags);
+	solver.findMDB(dataPath, q, k, flags, numThreads);
 }
 
 void MDBP::branch(int dep) {

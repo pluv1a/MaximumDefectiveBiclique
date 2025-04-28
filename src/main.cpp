@@ -1,9 +1,11 @@
 #include <chrono>
+#include <algorithm>
 #include "utils/cmdline.hpp"
 #include "utils/log.hpp"
 #include "mdb/mdbp.h"
 #include "mdb/mdbb.h"
 #include "mdb/mdc.h"
+#include "mdb/mbc.h"
 
 using namespace logging;
 
@@ -12,7 +14,8 @@ int main(int argc, char *argv[]) {
 	args.add<std::string>("data", 'd', "dataset path", true, "");
 	args.add<int>("key", 'k', "value of k", true, 0);
 	args.add<int>("lb", 'q', "lower bound size", false, 0);
-	args.add<std::string>("algo", 'a', "algorithm", false, "p", cmdline::oneof<std::string>("pivoting", "bisect", "baseline", "p", "b", "mdc"));
+	args.add<int>("jobs", 'j', "number of parallel jobs", false, 0);
+	args.add<std::string>("algo", 'a', "algorithm", false, "p", cmdline::oneof<std::string>("pivoting", "bisect", "baseline", "p", "b", "mdc", "mbc"));
 	// args.add<int>("ub-level", 'u', "specify upper bound level: 0 (disable), 1 (basic), 2 (improved), 3 (full)", false, 2);
 	args.add("no-ub", '\0', "disable upper bound techniques");
 	args.add("no-core", '\0', "disable core reduction");
@@ -41,6 +44,9 @@ int main(int argc, char *argv[]) {
 			| !args.exist("no-ub") * FLAG_UB \
 			| args.exist("debug") * FLAG_DEBUG;
 
+	int numThreads = std::max(args.get<int>("jobs"), 1);
+
+
 	// if (args.get<int>("ub-level") == 1 || args.get<int>("ub-level") == 3)
 	// 	flags |= FLAG_UB_BASIC;
 
@@ -51,11 +57,13 @@ int main(int argc, char *argv[]) {
 
 
 	if (args.get<std::string>("algo")[0] == 'p') 
-		MDBP::run(dataPath, lb, k, flags);
+		MDBP::run(dataPath, lb, k, flags, numThreads);
 	else if (args.get<std::string>("algo") == "mdc")
 		MDC::run(dataPath, lb, k, flags);
+	else if (args.get<std::string>("algo") == "mbc")
+		MBC::run(dataPath, lb, flags);
 	else
-		MDBB::run(dataPath, lb, k, flags);
+		MDBB::run(dataPath, lb, k, flags, numThreads);
 
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
 		std::chrono::steady_clock::now() - startTimePoint);

@@ -4,9 +4,9 @@
 
 using namespace logging;
 
-void MDBB::run(const std::string &dataPath, int q[2], int k, int flags) {
+void MDBB::run(const std::string &dataPath, int q[2], int k, int flags, int numThreads) {
 	MDBB solver;
-	solver.findMDB(dataPath, q, k, flags);
+	solver.findMDB(dataPath, q, k, flags, numThreads);
 }
 
 void MDBB::branch(int dep) {

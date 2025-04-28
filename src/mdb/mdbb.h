@@ -5,7 +5,7 @@
 
 class MDBB : public MDB {
 public:
-	static void run(const std::string &dataPath, int q[2], int k, int flags);
+	static void run(const std::string &dataPath, int q[2], int k, int flags, int numThreads);
 private:
 	void branch(int dep) override;
 };

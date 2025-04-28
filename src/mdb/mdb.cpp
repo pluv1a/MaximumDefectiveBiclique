@@ -8,7 +8,6 @@
 #include <queue>
 
 using namespace logging;
-#define NUM_THREADS 10
 
 // #define PIVOTING_V2
 
@@ -35,7 +34,7 @@ thread_local std::vector<int> MDB::degS[2], MDB::degC[2];
 thread_local BiGraph MDB::G;
 thread_local int MDB::numNnbS;
 
-void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
+void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int numThreads) {
 	BiGraph G(dataPath);
 	logBiGraph(G);
 
@@ -43,6 +42,7 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 	lb[1] = q[1];
 	MDB::k = k;
 	MDB::flags = flags;
+	MDB::numThreads = numThreads;
 
 	numNnbS = numNnbSs = \
 	numBranches = numPivoting = numBipartite = \
@@ -50,7 +50,7 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags) {
 
 	for (int s = 0; s <= 1; ++s) {
 		Ss[s].reserve(G.n[s]);
-		#pragma omp parallel num_threads(NUM_THREADS)
+		#pragma omp parallel num_threads(numThreads)
 		{
 			S[s].reserve(G.n[s]);
 			C[s].reserve(G.n[s]);
@@ -186,7 +186,7 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	std::vector<CuckooHash> vise(G.n[0]);
 	thread_local static std::vector<int> cn(std::max(G.n[0], G.n[1]));
 
-	#pragma omp parallel num_threads(NUM_THREADS*2)
+	#pragma omp parallel num_threads(numThreads)
 	{
 		cn.resize(std::max(G.n[0], G.n[1]));
 	}
@@ -198,7 +198,7 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	Ordering o;
 	o.degeneracyOrdering(G);
 	for (int t = 0; t < COMM_ROUNDS; ++t) {
-		#pragma omp parallel for num_threads(NUM_THREADS*2) schedule(dynamic)
+		#pragma omp parallel for num_threads(numThreads) schedule(dynamic)
 		for (int i = 0; i < o.numOrdered; ++i) {
 			//fprintf(stderr, "\rCommon Neighbor Reduction: %d/%d", o.numOrdered-i, o.numOrdered);
 			int s = o.ordered[i] >= G.n[0];
@@ -417,7 +417,7 @@ void MDB::russianDoll() {
 
 	o.degeneracyOrdering(G0);
 
-	#pragma omp parallel num_threads(NUM_THREADS)
+	#pragma omp parallel num_threads(numThreads)
 	{
 		for (int s = 0; s <= 1; ++s) {
 			degS[s].assign(G0.n[s], 0);
@@ -429,7 +429,7 @@ void MDB::russianDoll() {
 	}
 
 
-	#pragma omp parallel for num_threads(NUM_THREADS) schedule(dynamic)
+	#pragma omp parallel for num_threads(numThreads) schedule(dynamic)
 	for (int i = o.numOrdered-1; i >= 0; --i) {
 		int uSide = o.ordered[i] >= G0.n[0];
 		int u = o.ordered[i] - uSide * G0.n[0];

@@ -204,10 +204,10 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 			int s = o.ordered[i] >= G.n[0];
 			int u = o.ordered[i] - s * G.n[0];
 			if (visv[s][u]) continue;
-			for (int v : G.nbr[s][u]) if (!visv[s^1][v] && !(s ? vise[v].find(u) : vise[u].find(v)))
+			for (int v : G.nbr[s][u]) if (!visv[s^1][v]/* && !(s ? vise[v].find(u) : vise[u].find(v))*/)
 				for (int w : G.nbr[s^1][v]) if (!visv[s][w]/* && !(s ? vise[v].find(w) : vise[w].find(v))*/)
 					cn[w] = 0;
-			for (int v : G.nbr[s][u]) if (!visv[s^1][v] && !(s ? vise[v].find(u) : vise[u].find(v)))
+			for (int v : G.nbr[s][u]) if (!visv[s^1][v]/* && !(s ? vise[v].find(u) : vise[u].find(v))*/)
 				for (int w : G.nbr[s^1][v]) if (!visv[s][w]/* && !(s ? vise[v].find(w) : vise[w].find(v))*/)
 					++cn[w];
 

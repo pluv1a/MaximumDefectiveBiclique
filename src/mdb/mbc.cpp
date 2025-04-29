@@ -121,9 +121,22 @@ BiGraph MBC::comm(BiGraph &G, int q[2]) {
 	std::vector<int> cn(std::max(G.n[0], G.n[1]));
 	std::vector<int> cnt[2] = {std::vector<int>(G.n[0]), std::vector<int>(G.n[1])};
 
-	for (int s = 0; s <= 1; ++s)
-		for (int v : G.V[s])
+	for (int s = 0; s <= 1; ++s) {
+		for (int v : G.V[s]) {
 			deg[s][v] = G.degree(s, v);
+
+		}
+	}
+	for (int s = 0; s <= 1; ++s) {
+		for (int v : G.V[s]) {
+			if (deg[s][v] < q[s^1]) {
+				visv[s][v] = true;
+				for (int w : G.nbr[s][v]) if (--deg[s^1][w] < q[s])
+					visv[s^1][w] = true;
+			}
+		}
+	}
+			
 
 	Ordering o;
 	o.degeneracyOrdering(G);

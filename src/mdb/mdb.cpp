@@ -37,6 +37,11 @@ thread_local int MDB::numNnbS;
 void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int numThreads) {
 	BiGraph G(dataPath);
 	logBiGraph(G);
+	int sumDeg[2] = {0};
+	for (int s = 0; s <= 1; ++s)
+		for (int v : G.V[s])
+			sumDeg[s] += G.degree(s, v);
+	log("maxdegU = %d, maxdegV = %d, avgdeg = %d", G.maxDeg[0], G.maxDeg[1], (sumDeg[0]+sumDeg[1])/(G.V[0].size()+G.V[1].size()));
 
 	lb[0] = q[0];
 	lb[1] = q[1];
@@ -185,24 +190,37 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	std::vector<int> deg[2] = {std::vector<int>(G.n[0]), std::vector<int>(G.n[1])};
 	std::vector<CuckooHash> vise(G.n[0]);
 	thread_local static std::vector<int> cn(std::max(G.n[0], G.n[1]));
+	std::vector<int> sumDeg[2] = {std::vector<int>(G.n[0]), std::vector<int>(G.n[1])};
+	std::vector<int> orderedV[2];
 
 	#pragma omp parallel num_threads(numThreads)
 	{
 		cn.resize(std::max(G.n[0], G.n[1]));
 	}
 
-	for (int s = 0; s <= 1; ++s)
-		for (int v : G.V[s])
-			deg[s][v] = G.degree(s, v);
+	for (int s = 0; s <= 1; ++s) {
+		// #pragma omp parallel for num_threads(numThreads)
+		for (int u : G.V[s]) {
+			orderedV[s].push_back(u);
+			deg[s][u] = G.degree(s, u);
+			for (int v : G.nbr[s][u]) {
+				sumDeg[s][u] += G.degree(s^1, v);
+			}
+		}
+		std::sort(orderedV[s].begin(), orderedV[s].end(), [&](int u, int v) {
+			return sumDeg[s][u] > sumDeg[s][v];
+		});
+	}
 
-	Ordering o;
-	o.degeneracyOrdering(G);
-	for (int t = 0; t < COMM_ROUNDS; ++t) {
+	// Ordering o;
+	// o.degeneracyOrdering(G);
+	for (int s = 0; s <= 1; ++s) {
 		#pragma omp parallel for num_threads(numThreads) schedule(dynamic)
-		for (int i = 0; i < o.numOrdered; ++i) {
+		for (int i = 0; i < orderedV[s].size(); ++i) {
 			//fprintf(stderr, "\rCommon Neighbor Reduction: %d/%d", o.numOrdered-i, o.numOrdered);
-			int s = o.ordered[i] >= G.n[0];
-			int u = o.ordered[i] - s * G.n[0];
+			// int s = o.ordered[i] >= G.n[0];
+			// int u = o.ordered[i] - s * G.n[0];
+			int u = orderedV[s][i];
 			if (visv[s][u]) continue;
 			for (int v : G.nbr[s][u]) if (!visv[s^1][v]/* && !(s ? vise[v].find(u) : vise[u].find(v))*/)
 				for (int w : G.nbr[s^1][v]) if (!visv[s][w]/* && !(s ? vise[v].find(w) : vise[w].find(v))*/)

@@ -74,4 +74,8 @@ namespace logging {
 	}
 }
 
+<<<<<<< HEAD
 #endif
+=======
+#endif
+>>>>>>> parallel

@@ -6,9 +6,15 @@ using namespace logging;
 
 // #define PIVOTING_V2
 
+<<<<<<< HEAD
 void MDBP::run(const std::string &dataPath, int q[2], int k, int flags) {
 	MDBP solver;
 	solver.findMDB(dataPath, q, k, flags);
+=======
+void MDBP::run(const std::string &dataPath, int q[2], int k, int flags, int numThreads) {
+	MDBP solver;
+	solver.findMDB(dataPath, q, k, flags, numThreads);
+>>>>>>> parallel
 }
 
 void MDBP::branch(int dep) {
@@ -34,6 +40,7 @@ void MDBP::branch(int dep) {
 
 
 	if (C[0].size() == 0 && C[1].size() == 0) {
+<<<<<<< HEAD
 		if (S[0].size() >= lb[0] && S[1].size() >= lb[1] && numEdgesS > numEdgesSs) {
 			Ss[0].clear(); Ss[1].clear();
 			for (int u : S[0]) Ss[0].push(u);
@@ -42,6 +49,22 @@ void MDBP::branch(int dep) {
 			log("New S*! |E|=%d", numEdgesSs);
 			// logSet(Ss[0]);
 			// logSet(Ss[1]);
+=======
+		if (S[0].size() >= lb[0] && S[1].size() >= lb[1]) {
+			#pragma omp critical(update)
+			{
+				if (numEdgesS > numEdgesSs) {
+					for (int s = 0; s <= 1; ++s) {
+						Ss[s].clear();
+						for (int v : S[s]) Ss[s].push(v);
+					}
+					numNnbSs = numNnbS;
+					log("New S*! |E|=%d", numEdgesSs);
+					// logSet(Ss[0]);
+					// logSet(Ss[1]);
+				}
+			}
+>>>>>>> parallel
 		}
 		return;
 	}
@@ -56,7 +79,10 @@ void MDBP::branch(int dep) {
 
 		if (!upperbound()) { ++numUbPruned; return; }
 	}
+<<<<<<< HEAD
 
+=======
+>>>>>>> parallel
 	++numBranches;
 
 	// int cntNnbS = 0;

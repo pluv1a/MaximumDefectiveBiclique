@@ -41,7 +41,9 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int n
 	for (int s = 0; s <= 1; ++s)
 		for (int v : G.V[s])
 			sumDeg[s] += G.degree(s, v);
-	log("maxdegU = %d, maxdegV = %d, avgdeg = %d", G.maxDeg[0], G.maxDeg[1], (sumDeg[0]+sumDeg[1])/(G.V[0].size()+G.V[1].size()));
+	log("maxdegU = %d, maxdegV = %d, avgdegU = %d, avgdegV = %d", G.maxDeg[0], G.maxDeg[1], sumDeg[0] / G.V[0].size(), sumDeg[1] / G.V[1].size());
+
+	return;
 
 	lb[0] = q[0];
 	lb[1] = q[1];
@@ -637,34 +639,34 @@ MDB::BakPos MDB::update(int uSide, int u) {
 			}
 		}
 	}
-	thread_local static std::vector<int> q[2];
-	if (flags & FLAG_QUEUE) {
-		q[0].clear();
-		q[1].clear();
-	}
+	// thread_local static std::vector<int> q[2];
+	// if (flags & FLAG_QUEUE) {
+		// q[0].clear();
+		// q[1].clear();
+	// }
 
 	//if (flags & FLAG_CORE) {
 		for (int s = 0; s <= 1; ++s) {
 			for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
 				subC(s, v);
-				if (flags & FLAG_QUEUE) q[s].push_back(v);
+				// if (flags & FLAG_QUEUE) q[s].push_back(v);
 			}
 		}
 	//}
 
-	if (flags & FLAG_QUEUE) {
-		while (!q[0].empty() || !q[1].empty()) {
-			for (int s = 0; s <= 1; ++s) {
-				while (!q[s].empty()) {
-					int v = q[s].back(); q[s].pop_back();
-					for (int w : G.nbr[s][v]) if (C[s^1].inside(w) && degSub(s^1, w) < lb[s]-k+numNnbS) {
-						subC(s^1, w);
-						q[s^1].push_back(w);
-					}
-				}
-			}
-		}
-	}
+	// if (flags & FLAG_QUEUE) {
+	// 	while (!q[0].empty() || !q[1].empty()) {
+	// 		for (int s = 0; s <= 1; ++s) {
+	// 			while (!q[s].empty()) {
+	// 				int v = q[s].back(); q[s].pop_back();
+	// 				for (int w : G.nbr[s][v]) if (C[s^1].inside(w) && degSub(s^1, w) < lb[s]-k+numNnbS) {
+	// 					subC(s^1, w);
+	// 					q[s^1].push_back(w);
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	// for (int t = 0; t < 2; ++t) {
 	// 	for (int s = 0; s <= 1; ++s) {
@@ -728,31 +730,31 @@ MDB::BakPos MDB::minus(int uSide, int u) {
 		}
 	}
 
-	thread_local static std::vector<int> q[2];
-	q[0].clear(); q[1].clear();
+	// thread_local static std::vector<int> q[2];
+	// q[0].clear(); q[1].clear();
 
 	//if (flags & FLAG_CORE) {
 		for (int s = 0; s <= 1; ++s) {
 			for (int v : C[s]) if (degSub(s, v) < lb[s^1]-k+numNnbS) {
 				subC(s, v);
-				if (flags & FLAG_QUEUE) q[s].push_back(v);
+				// if (flags & FLAG_QUEUE) q[s].push_back(v);
 			}
 		}
 	//}
 
-	if (flags & FLAG_QUEUE) {
-		while (!q[0].empty() || !q[1].empty()) {
-			for (int s = 0; s <= 1; ++s) {
-				while (!q[s].empty()) {
-					int v = q[s].back(); q[s].pop_back();
-					for (int w : G.nbr[s][v]) if (C[s^1].inside(w) && degSub(s^1, w) < lb[s]-k+numNnbS) {
-						subC(s^1, w);
-						q[s^1].push_back(w);
-					}
-				}
-			}
-		}
-	}
+	// if (flags & FLAG_QUEUE) {
+	// 	while (!q[0].empty() || !q[1].empty()) {
+	// 		for (int s = 0; s <= 1; ++s) {
+	// 			while (!q[s].empty()) {
+	// 				int v = q[s].back(); q[s].pop_back();
+	// 				for (int w : G.nbr[s][v]) if (C[s^1].inside(w) && degSub(s^1, w) < lb[s]-k+numNnbS) {
+	// 					subC(s^1, w);
+	// 					q[s^1].push_back(w);
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	//pos.backup(1, C);
 

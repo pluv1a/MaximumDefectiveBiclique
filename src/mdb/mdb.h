@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 #pragma once
->>>>>>> parallel
 #ifndef MDB_H
 #define MDB_H
 
@@ -30,17 +27,6 @@
 #define FLAG_HEU			(1<<8)
 #define FLAG_BR				(1<<9)
 
-<<<<<<< HEAD
-class MDB {
-public:
-	void findMDB(const std::string &dataPath, int q[2], int k, int flags=7);
-protected:
-	VertexSet Ss[2], S[2], C[2], X[2];
-	int k, numNnbS, numNnbSs, lb[2], flags;
-	std::vector<int> degS[2], degC[2];
-	// std::vector<CuckooHash> coexist[2];
-	BiGraph G;
-=======
 
 class MDB {
 public:
@@ -51,7 +37,6 @@ public:
 	thread_local static int numNnbS;
 	thread_local static std::vector<int> degS[2], degC[2];
 	thread_local static BiGraph G;
->>>>>>> parallel
 	int branchTime, reductionTime, numBranches, numUbPruned, numPivoting, numBipartite;
 
 	struct BakPos {
@@ -66,13 +51,8 @@ public:
 
 	virtual void branch(int dep) = 0;
 
-<<<<<<< HEAD
-	static BiGraph core(BiGraph &G, int a, int b);
-	static BiGraph comm(BiGraph &G, int q[2], int k);
-=======
 	BiGraph core(BiGraph &G, int a, int b);
 	BiGraph comm(BiGraph &G, int q[2], int k);
->>>>>>> parallel
 	
 	void heuristic(BiGraph &G);
 
@@ -105,10 +85,6 @@ public:
 		for (int v : G.nbr[s][u]) --degC[s^1][v];
 	}
 
-<<<<<<< HEAD
-=======
-
->>>>>>> parallel
 	inline void moveC2S(int s, int u) { 
 		numNnbS += nnbS(s, u);
 		C[s].popBack(u);

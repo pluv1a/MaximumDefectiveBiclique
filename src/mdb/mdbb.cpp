@@ -4,15 +4,9 @@
 
 using namespace logging;
 
-<<<<<<< HEAD
-void MDBB::run(const std::string &dataPath, int q[2], int k, int flags) {
-	MDBB solver;
-	solver.findMDB(dataPath, q, k, flags);
-=======
 void MDBB::run(const std::string &dataPath, int q[2], int k, int flags, int numThreads) {
 	MDBB solver;
 	solver.findMDB(dataPath, q, k, flags, numThreads);
->>>>>>> parallel
 }
 
 void MDBB::branch(int dep) {
@@ -43,16 +37,6 @@ void MDBB::branch(int dep) {
 
 
 	if (C[0].size() == 0 && C[1].size() == 0) {
-<<<<<<< HEAD
-		if (S[0].size() >= lb[0] && S[1].size() >= lb[1] && numEdgesS > numEdgesSs) {
-			Ss[0].clear(); Ss[1].clear();
-			for (int u : S[0]) Ss[0].push(u);
-			for (int v : S[1]) Ss[1].push(v);
-			numNnbSs = numNnbS;
-			log("New MDB found! |E|=%d", numEdgesSs);
-			// logSet(Ss[0]);
-			// logSet(Ss[1]);
-=======
 		if (S[0].size() >= lb[0] && S[1].size() >= lb[1]) {
 			#pragma omp critical(update)
 			{
@@ -67,7 +51,6 @@ void MDBB::branch(int dep) {
 					// logSet(Ss[1]);
 				}
 			}
->>>>>>> parallel
 		}
 		return;
 	}

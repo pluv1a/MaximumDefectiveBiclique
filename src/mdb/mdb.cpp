@@ -43,8 +43,6 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int n
 			sumDeg[s] += G.degree(s, v);
 	log("maxdegU = %d, maxdegV = %d, avgdegU = %d, avgdegV = %d", G.maxDeg[0], G.maxDeg[1], sumDeg[0] / G.V[0].size(), sumDeg[1] / G.V[1].size());
 
-	return;
-
 	lb[0] = q[0];
 	lb[1] = q[1];
 	MDB::k = k;

@@ -37,17 +37,12 @@ thread_local int MDB::numNnbS;
 void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int numThreads) {
 	BiGraph G(dataPath);
 	logBiGraph(G);
-	int sumDeg[2] = {0};
-	for (int s = 0; s <= 1; ++s)
-		for (int v : G.V[s])
-			sumDeg[s] += G.degree(s, v);
-	log("maxdegU = %d, maxdegV = %d, avgdegU = %d, avgdegV = %d", G.maxDeg[0], G.maxDeg[1], sumDeg[0] / G.V[0].size(), sumDeg[1] / G.V[1].size());
 
-	lb[0] = q[0];
-	lb[1] = q[1];
-	MDB::k = k;
 	MDB::flags = flags;
 	MDB::numThreads = numThreads;
+	MDB::k = k;
+	MDB::lb[0] = q[0];
+	MDB::lb[1] = q[1];
 
 	numNnbS = numNnbSs = \
 	numBranches = numPivoting = numBipartite = \
@@ -66,36 +61,44 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int n
 		// coexist[s].resize(G.n[s]);
 	}
 
+	auto searchStartTime = std::chrono::steady_clock::now();
+
+	log("Start reductions...");
+	BiGraph g = core(G, q[1]-k, q[0]-k);
+	logBiGraph(g);
+	g = comm(g, q, k);
+	logBiGraph(g);
+
 	if (flags & FLAG_HEU) {
 		log("Start heuristic...");
 		auto heuristicStartTime = std::chrono::steady_clock::now();
-		heuristic(G);
+		heuristic(g);
 		int heuristicTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-heuristicStartTime).count();
 		log("Heuristic done! Time: %d ms", heuristicTime);
 		log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
-		// logSetInfo(Ss[0], "U*");
-		// logSetInfo(Ss[1], "V*");
+		logSetInfo(Ss[0], "U*");
+		logSetInfo(Ss[1], "V*");
 
 	}
-	
+
 	log("Start searching...");
-	auto searchStartTime = std::chrono::steady_clock::now();
 	BiGraph &Sub = this->G;
 
 	if (flags & FLAG_PB) {
-		lb[0] = G.maxDeg[1]+k;
-		while (lb[0] > q[0]) {
-			MDB::lb[1] = std::max(q[1], numEdgesSs / lb[0]);
-			MDB::lb[0] = std::max(q[0], lb[0] >> 1);
+		int s = (int)(Ss[0].size() < Ss[1].size());
+		lb[s] = g.maxDeg[s^1]+k;
+		while (lb[s] > q[s]) {
+			MDB::lb[s^1] = std::max(q[s^1], std::max(numEdgesSs, q[0]*q[1]-k) / lb[s]);
+			MDB::lb[s] = std::max(q[s], lb[s] >> 1);
 			log("*** lb = (%d, %d) ***", lb[0], lb[1]);
 
-			Sub = (flags & FLAG_CORE) ? core(G, lb[1]-k, lb[0]-k) : G;
-			logBiGraph(Sub);
+			Sub = (flags & FLAG_CORE) ? core(g, lb[1]-k, lb[0]-k) : g;
+			// logBiGraph(Sub);
 
 			if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
 
 			if (flags & FLAG_CN) Sub = comm(Sub, lb, k);
-			logBiGraph(Sub);
+			// logBiGraph(Sub);
 
 			if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
 
@@ -114,13 +117,15 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int n
 		}
 	}
 	else {
+		lb[0] = q[0];
+		lb[1] = q[1];
 		log("*** lb = (%d, %d) ***", lb[0], lb[1]);
 
-		Sub = (flags & FLAG_CORE) ? core(G, lb[1]-k, lb[0]-k) : G;
-		logBiGraph(Sub);
+		Sub = (flags & FLAG_CORE) ? core(g, lb[1]-k, lb[0]-k) : g;
+		// logBiGraph(Sub);
 
 		if (flags & FLAG_CN) Sub = comm(Sub, lb, k);
-		logBiGraph(Sub);
+		// logBiGraph(Sub);
 
 		auto branchStartTime = std::chrono::steady_clock::now();
 		if ((flags & FLAG_ORDER) && lb[0] > k && lb[1] > k) {
@@ -133,19 +138,20 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int n
 		}
 		branchTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - branchStartTime).count();
 	}
+
 	int searchTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - searchStartTime).count();
 	log("Searching done! Total time: %d ms, Branch time: %d ms, branch num: %d (pivoting: %d, bipartite: %d), ub pruned num: %d", 
 		searchTime, branchTime, numBranches, numPivoting, numBipartite, numUbPruned);
-
 	log("G[S*] info: |U|=%d, |V|=%d, |E|=%d", Ss[0].size(), Ss[1].size(), numEdgesSs);
-	// logSetInfo(Ss[0], "U*");
-	// logSetInfo(Ss[1], "V*");
 
-	// log("Missing edges:");
-	// for (int u : Ss[0])
-	// 	for (int v : Ss[1])
-	// 		if (!G.connect(u, v))
-	// 			log("(%d, %d)", u, v);
+	logSetInfo(Ss[0], "U*");
+	logSetInfo(Ss[1], "V*");
+
+	log("Missing edges:");
+	for (int u : Ss[0])
+		for (int v : Ss[1])
+			if (!G.connect(u, v))
+				log("(%d, %d)", u, v);
 }
 
 BiGraph MDB::core(BiGraph &G, int a, int b) {
@@ -188,10 +194,10 @@ BiGraph MDB::core(BiGraph &G, int a, int b) {
 BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	std::vector<bool> visv[2] = {std::vector<bool>(G.n[0]), std::vector<bool>(G.n[1])};
 	std::vector<int> deg[2] = {std::vector<int>(G.n[0]), std::vector<int>(G.n[1])};
-	std::vector<CuckooHash> vise(G.n[0]);
+	// std::vector<CuckooHash> vise(G.n[0]);
 	thread_local static std::vector<int> cn(std::max(G.n[0], G.n[1]));
-	std::vector<int> sumDeg[2] = {std::vector<int>(G.n[0]), std::vector<int>(G.n[1])};
-	std::vector<int> orderedV[2];
+	// std::vector<int> sumDeg[2] = {std::vector<int>(G.n[0]), std::vector<int>(G.n[1])};
+	// std::vector<int> orderedV[2];
 
 	#pragma omp parallel num_threads(numThreads)
 	{
@@ -201,26 +207,29 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 	for (int s = 0; s <= 1; ++s) {
 		// #pragma omp parallel for num_threads(numThreads)
 		for (int u : G.V[s]) {
-			orderedV[s].push_back(u);
+	// 		orderedV[s].push_back(u);
 			deg[s][u] = G.degree(s, u);
-			for (int v : G.nbr[s][u]) {
-				sumDeg[s][u] += G.degree(s^1, v);
+	// 		for (int v : G.nbr[s][u]) {
+	// 			sumDeg[s][u] += G.degree(s^1, v);
 			}
 		}
-		std::sort(orderedV[s].begin(), orderedV[s].end(), [&](int u, int v) {
-			return sumDeg[s][u] > sumDeg[s][v];
-		});
-	}
+	// 	std::sort(orderedV[s].begin(), orderedV[s].end(), [&](int u, int v) {
+	// 		return sumDeg[s][u] > sumDeg[s][v];
+	// 	});
+	// }
 
 	// Ordering o;
 	// o.degeneracyOrdering(G);
+	// for (int t = 0; t < 2; ++t)
 	for (int s = 0; s <= 1; ++s) {
-		#pragma omp parallel for num_threads(numThreads) schedule(dynamic)
-		for (int i = 0; i < orderedV[s].size(); ++i) {
+	#pragma omp parallel for num_threads(numThreads) schedule(dynamic)
+	// for (int i = 0; i < o.numOrdered; ++i) {
+		// for (int i = 0; i < orderedV[s].size(); ++i) {
+		for (int u : G.V[s]) {
 			//fprintf(stderr, "\rCommon Neighbor Reduction: %d/%d", o.numOrdered-i, o.numOrdered);
 			// int s = o.ordered[i] >= G.n[0];
 			// int u = o.ordered[i] - s * G.n[0];
-			int u = orderedV[s][i];
+			// int u = orderedV[s][i];
 			if (visv[s][u]) continue;
 			for (int v : G.nbr[s][u]) if (!visv[s^1][v]/* && !(s ? vise[v].find(u) : vise[u].find(v))*/)
 				for (int w : G.nbr[s^1][v]) if (!visv[s][w]/* && !(s ? vise[v].find(w) : vise[w].find(v))*/)
@@ -232,13 +241,13 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 			int cntv = 0;
 			for (int v : G.nbr[s][u]) {
 				int cntw = 0;
-				if (visv[s^1][v] || (s ? vise[v].find(u) : vise[u].find(v))) continue;
+				if (visv[s^1][v]/* || (s ? vise[v].find(u) : vise[u].find(v))*/) continue;
 				for (int w : G.nbr[s^1][v]) if (!visv[s][w] && cn[w] >= q[s^1]-k && ++cntw >= q[s]-k) break;
 				if (cntw < q[s]-k) {
-					#pragma omp critical(vise) 
-					{
-						s ? vise[v].insert(u) : vise[u].insert(v);
-					}
+					// #pragma omp critical(vise) 
+					// {
+						//s ? vise[v].insert(u) : vise[u].insert(v);
+					// }
 				}
 				else if (++cntv >= q[s^1]-k) break;
 			}
@@ -258,30 +267,30 @@ BiGraph MDB::comm(BiGraph &G, int q[2], int k) {
 
 	BiGraph CN;
 	for (int u : G.V[0]) if (!visv[0][u])
-		for (int v : G.nbr[0][u]) if (!visv[1][v] && !vise[u].find(v))
+		for (int v : G.nbr[0][u]) if (!visv[1][v]/* && !vise[u].find(v)*/)
 			CN.addEdge(u, v);
 	return CN;
 }
 
 void MDB::heuristic(BiGraph &G) {
 
-	BiGraph Core = core(G, lb[1]-k, lb[0]-k);
+	// BiGraph Core = core(G, lb[1]-k, lb[0]-k);
 
 	for (int s = 0; s <= 1; ++s) {
 		S[s].clear();
 		C[s].clear();
-		degS[s].assign(Core.n[s], 0);
+		degS[s].assign(G.n[s], 0);
 	}
 
 	Ordering o;
-	o.degeneracyOrdering(Core);
+	o.degeneracyOrdering(G);
 
 	for (int i = o.numOrdered-1; i >= 0; --i) {
-		int s = o.ordered[i] >= Core.n[0];
-		int u = o.ordered[i] - s * Core.n[0];
+		int s = o.ordered[i] >= G.n[0];
+		int u = o.ordered[i] - s * G.n[0];
 		if (numNnbS + nnbS(s, u) <= k) {
 			S[s].push(u);
-			for (int v : Core.nbr[s][u]) ++degS[s^1][v];
+			for (int v : G.nbr[s][u]) ++degS[s^1][v];
 			numNnbS += nnbS(s, u);
 		}
 	}
@@ -300,17 +309,17 @@ void MDB::heuristic(BiGraph &G) {
 
 		S[s].clear();
 
-		for (int v : Core.V[s^1]) {
+		for (int v : G.V[s^1]) {
 			S[s^1].push(v);
 			degS[s^1][v] = 0;
 		}
 
-		for (int v : Core.V[s]) {
+		for (int v : G.V[s]) {
 			C[s].push(v);
-			degS[s][v] = Core.degree(s, v);
+			degS[s][v] = G.degree(s, v);
 		}
 
-		LinearHeap U(C[s], [&](int v){ return degS[s][v] + Core.maxDeg[s]*o.value[v+s*Core.n[0]]; });
+		LinearHeap U(C[s], [&](int v){ return degS[s][v] + G.maxDeg[s]*o.value[v+s*G.n[0]]; });
 		LinearHeap V(S[s^1], [&](int v){ return degS[s^1][v]; });
 
 		numNnbS = 0;
@@ -324,7 +333,7 @@ void MDB::heuristic(BiGraph &G) {
 
 			S[s].push(u);
 			numNnbS += nnbS(s, u);
-			for (int v : Core.nbr[s][u]) {
+			for (int v : G.nbr[s][u]) {
 				V.inc(v);
 				++degS[s^1][v];
 			}
@@ -339,7 +348,7 @@ void MDB::heuristic(BiGraph &G) {
 					int v = V.min(); V.popMin();
 					numNnbS -= nnbS(s^1, v);
 					S[s^1].pop(v);
-					for (int w : Core.nbr[s^1][v]) {
+					for (int w : G.nbr[s^1][v]) {
 						U.dec(w);
 						--degS[s][w];
 					}
@@ -348,7 +357,7 @@ void MDB::heuristic(BiGraph &G) {
 			else {
 				S[s].pop(u);
 				numNnbS -= nnbS(s, u);
-				for (int v : Core.nbr[s][u]) {
+				for (int v : G.nbr[s][u]) {
 					V.dec(v);
 					--degS[s^1][v];
 				}
@@ -367,6 +376,79 @@ void MDB::heuristic(BiGraph &G) {
 	}
 
 }
+
+// void MDB::heuristic(BiGraph &G) {
+
+// 	// Ordering o;
+// 	// o.degeneracyOrdering(G);
+
+// 	// for (int i = o.numOrdered-1; i >= 0; --i) {
+// 	// 	int uSide = o.ordered[i] >= G.n[0];
+// 	// 	int u = o.ordered[i] - uSide * G.n[0];
+
+// 		for (int s = 0; s <= 1; ++s) {
+// 			S[s].clear();
+// 			C[s].clear();
+// 		}	
+
+// 		// S[uSide].push(u);
+// 		int numNnbS = 0;
+
+// 		for (int s = 0; s <= 1; ++s) {
+// 			for (int v : G.V[s]) {
+// 				C[s].push(v);
+// 				degS[s][v] = 0;
+// 			}
+// 		}
+
+
+// 		while (S[0].size() < lb[0] || S[1].size() < lb[1]) {
+// 			int s = (int)(lb[0]-S[0].size() < lb[1]-S[1].size());
+// 			if (C[s].size() == 0) return;
+// 			int u = -1, maxDegS = -1;
+// 			for (int v : C[s]) {
+// 				if (maxDegS < degS[s][v]) {
+// 					maxDegS = degS[s][v];
+// 					u = v;
+// 				}
+// 			}
+// 			C[s].pop(u); S[s].push(u);
+// 			numNnbS += nnbS(s, u);
+// 			for (int v : G.nbr[s][u]) ++degS[s^1][v];
+// 			for (int v : C[s^1]) {
+// 				if (nnbS(s^1, v) > k-numNnbS) {
+// 					C[s^1].pop(v);
+// 				}
+// 			}
+// 		}
+
+// 		std::vector<std::vector<int>> bin(k+2);
+// 		VertexSet D[2] = {VertexSet(G.n[0]), VertexSet(G.n[1])};
+
+// 		for (int s = 0; s <= 1; ++s) {
+// 			numNnbS = 0;
+// 			for (int i = 0; i <= k; ++i) bin[i].clear();
+// 			for (int v : C[s]) bin[nnbS(s, v)].push_back(v);
+// 			for (int i = 0; numNnbS+i<=k; ++i) {
+// 				for (int v : bin[i]) {
+// 					if (numNnbS+i>k) break;
+// 					numNnbS += i;
+// 					D[s].push(v);
+// 				}
+// 			}
+// 			if (D[s].size()*S[s^1].size()-numNnbS > numEdgesSs) {
+// 				numNnbSs = numNnbS;
+// 				for (int t = 0; t <= 1; ++t) {
+// 					Ss[t].clear();
+// 					for (int v : S[t]) Ss[t].push(v);
+// 				}
+// 			}
+// 		}
+
+// 	// }
+
+
+// }
 
 void MDB::searchAll() {
 	numNnbS = 0;

@@ -93,12 +93,12 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int n
 			log("*** lb = (%d, %d) ***", lb[0], lb[1]);
 
 			Sub = (flags & FLAG_CORE) ? core(g, lb[1]-k, lb[0]-k) : g;
-			// logBiGraph(Sub);
+			logBiGraph(Sub);
 
 			if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
 
 			if (flags & FLAG_CN) Sub = comm(Sub, lb, k);
-			// logBiGraph(Sub);
+			logBiGraph(Sub);
 
 			if (Sub.numVertices(0) < lb[0] || Sub.numVertices(1) < lb[1]) continue;
 
@@ -122,10 +122,10 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int n
 		log("*** lb = (%d, %d) ***", lb[0], lb[1]);
 
 		Sub = (flags & FLAG_CORE) ? core(g, lb[1]-k, lb[0]-k) : g;
-		// logBiGraph(Sub);
+		logBiGraph(Sub);
 
 		if (flags & FLAG_CN) Sub = comm(Sub, lb, k);
-		// logBiGraph(Sub);
+		logBiGraph(Sub);
 
 		auto branchStartTime = std::chrono::steady_clock::now();
 		if ((flags & FLAG_ORDER) && lb[0] > k && lb[1] > k) {
@@ -701,12 +701,16 @@ bool MDB::upperbound(int uSide, int u) {
 	return true;
 }
 
+MDB::BakPos MDB::backup(const VertexSet V[2]) {
+	MDB::BakPos pos;
+	pos.backup(V);
+	return pos;
+}
 
 MDB::BakPos MDB::update(int uSide, int u) {
 	using namespace traversal;
 
-	BakPos pos;
-	pos.backup(C);
+	auto pos = backup(C);
 
 	moveC2S(uSide, u);
 
@@ -789,8 +793,7 @@ MDB::BakPos MDB::update(int uSide, int u) {
 MDB::BakPos MDB::minus(int uSide, int u) {
 	using namespace traversal;
 
-	BakPos pos;
-	pos.backup(C);
+	auto pos = backup(C);
 
 	subC(uSide, u);
 

@@ -41,7 +41,7 @@ public:
 
 	struct BakPos {
 		int p[2][2];
-		inline void backup(VertexSet *V) {
+		inline void backup(const VertexSet *V) {
 			p[0][0] = V[0].frontPos();
 			p[0][1] = V[1].frontPos();	
 			p[1][0] = V[0].backPos();
@@ -64,6 +64,7 @@ public:
 
 	// void cnExclusion(BiGraph &g, int q[2], int k);
 	
+	BakPos backup(const VertexSet V[2]);
 	BakPos update(int uSide, int u);
 	BakPos minus(int uSide, int u);
 	void restore(BakPos &pos);

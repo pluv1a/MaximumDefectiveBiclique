@@ -2,10 +2,12 @@
 #include <algorithm>
 #include "utils/cmdline.hpp"
 #include "utils/log.hpp"
-#include "mdb/mdbp.h"
-#include "mdb/mdbb.h"
-#include "mdb/mdc.h"
-#include "mdb/mbc.h"
+#include "algos/mdbp.h"
+#include "algos/mdbb.h"
+#include "algos/mdc.h"
+#include "algos/mbc.h"
+#include "algos/mbp.h"
+#include "algos/maxbc.h"
 
 using namespace logging;
 
@@ -15,7 +17,7 @@ int main(int argc, char *argv[]) {
 	args.add<int>("key", 'k', "value of k", true, 0);
 	args.add<int>("lb", 'q', "lower bound size", false, 0);
 	args.add<int>("jobs", 'j', "number of parallel jobs", false, 0);
-	args.add<std::string>("algo", 'a', "algorithm", false, "p", cmdline::oneof<std::string>("pivoting", "bisect", "baseline", "p", "b", "mdc", "mbc"));
+	args.add<std::string>("algo", 'a', "algorithm", false, "p", cmdline::oneof<std::string>("pivoting", "bisect", "baseline", "p", "b", "mdc", "mbc", "mbp", "maxbc"));
 	args.add("no-ub", '\0', "disable upper bound techniques");
 	args.add("no-core", '\0', "disable core reduction");
 	args.add("no-cn", '\0', "disable common neighbor reduction");
@@ -59,8 +61,16 @@ int main(int argc, char *argv[]) {
 		MDC::run(dataPath, lb, k, flags);
 	else if (args.get<std::string>("algo") == "mbc")
 		MBC::run(dataPath, lb, flags);
-	else
+	else if (args.get<std::string>("algo")[0] == 'b')
 		MDBB::run(dataPath, lb, k, flags, numThreads);
+	else if (args.get<std::string>("algo") == "mbp")
+		MBP::run(dataPath, lb, k, flags, numThreads);
+	else if (args.get<std::string>("algo") == "maxbc") 
+		MAXBC::run(dataPath, lb, k, flags, numThreads);
+	else {
+		log("Unknown algorithm: %s", args.get<std::string>("algo").c_str());
+		return 1;
+	}
 
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
 		std::chrono::steady_clock::now() - startTimePoint);

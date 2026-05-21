@@ -64,9 +64,9 @@ void MDB::findMDB(const std::string &dataPath, int q[2], int k, int flags, int n
 	auto searchStartTime = std::chrono::steady_clock::now();
 
 	log("Start reductions...");
-	BiGraph g = core(G, q[1]-k, q[0]-k);
+	BiGraph g = flags & FLAG_CORE ? core(G, q[1]-k, q[0]-k) : G;
 	logBiGraph(g);
-	g = comm(g, q, k);
+	if (flags & FLAG_CN) g = comm(g, q, k);
 	logBiGraph(g);
 
 	if (flags & FLAG_HEU) {

@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_map>
 #include <algorithm>
+#include <memory>
 
 #include "../utils/hash.hpp"
 #include "../utils/fastio.hpp"
@@ -15,11 +16,18 @@ struct BiGraph {
 	VertexSet V[2];
 	int n[2], m, maxDeg[2]; //, capacity[2];
 	std::vector<std::vector<int>> nbr[2];
-	std::vector<CuckooHash> nbrMap[2];
+	std::shared_ptr<std::vector<CuckooHash>> nbrMap[2];
 
-	BiGraph(): n{0}, m(0), maxDeg{0} {}
+	BiGraph(): n{0}, m(0), maxDeg{0} {
+		nbrMap[0] = std::make_shared<std::vector<CuckooHash>>();
+		nbrMap[1] = std::make_shared<std::vector<CuckooHash>>();
+	}
 
-	BiGraph(const std::string &filename): n{0}, m(0), maxDeg{0} { loadFromFile(filename); }
+	BiGraph(const std::string &filename): n{0}, m(0), maxDeg{0} { 
+		nbrMap[0] = std::make_shared<std::vector<CuckooHash>>();
+		nbrMap[1] = std::make_shared<std::vector<CuckooHash>>();
+		loadFromFile(filename); 
+	}
 
 	int capacity(int side) {
 		return nbr[side].size();
@@ -43,7 +51,7 @@ struct BiGraph {
 			n[s] = maxDeg[s] = 0;
 			V[s].clear();
 			nbr[s].clear();
-			nbrMap[s].clear();
+			nbrMap[s] = std::make_shared<std::vector<CuckooHash>>();
 		}
 		// std::vector<std::vector<int>>().swap(nbr[0]);
 		// std::vector<std::vector<int>>().swap(nbr[1]);
@@ -54,14 +62,14 @@ struct BiGraph {
 	void resize(int side, int size) {
 		// capacity[side] = size;
 		nbr[side].resize(size);
-		nbrMap[side].resize(size);
+		nbrMap[side]->resize(size);
 		V[side].reserve(size);
 	}
 
 	void addEdge(int u, int v) {
 		if (u >= capacity(0)) resize(0, u+1);
 		if (v >= capacity(1)) resize(1, v+1);
-		if (nbrMap[0][u].find(v)) return;
+		if ((*nbrMap[0])[u].find(v)) return;
 		++m;
 		n[0] = std::max(n[0], u+1);
 		n[1] = std::max(n[1], v+1);
@@ -69,18 +77,18 @@ struct BiGraph {
 		V[1].push(v);
 		nbr[0][u].push_back(v);
 		nbr[1][v].push_back(u);
-		nbrMap[0][u].insert(v);
-		nbrMap[1][v].insert(u);
+		(*nbrMap[0])[u].insert(v);
+		(*nbrMap[1])[v].insert(u);
 		maxDeg[0] = std::max(maxDeg[0], degree(0, u));
 		maxDeg[1] = std::max(maxDeg[1], degree(1, v));
 	}
 
 	bool connect(int u, int v) {
-		return nbrMap[0][u].find(v);
+		return (*nbrMap[0])[u].find(v);
 	}	
 
 	bool connect(int uSide, int u, int v) {
-		return nbrMap[uSide][u].find(v);
+		return (*nbrMap[uSide])[u].find(v);
 	}	
 
 	void loadFromFile(const std::string &fname) {

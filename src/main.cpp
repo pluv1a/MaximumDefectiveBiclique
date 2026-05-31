@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 	args.add<int>("key", 'k', "value of k", true, 0);
 	args.add<int>("lb", 'q', "lower bound size", false, 0);
 	args.add<int>("jobs", 'j', "number of parallel jobs", false, 0);
-	args.add<std::string>("algo", 'a', "algorithm", false, "p", cmdline::oneof<std::string>("pivoting", "bisect", "baseline", "p", "b", "mdc", "mbc", "mbp", "maxbc"));
+	args.add<std::string>("algo", 'a', "algorithm, one of p/b/mdc/mbc/mbp/maxbc", false, "p", cmdline::oneof<std::string>("pivoting", "bisect", "baseline", "p", "b", "mdc", "mbc", "mbp", "maxbc"));
 	args.add("no-ub", '\0', "disable upper bound techniques");
 	args.add("no-core", '\0', "disable core reduction");
 	args.add("no-cn", '\0', "disable common neighbor reduction");

@@ -5,6 +5,9 @@ Maximum defective biclique search
 - MDBB, a branch-and-bound-based algorithm
 - MDBP, a pivoting-based algorithm
 - MDC, an algorithm adapted from maximal defective clique enumeration
+- MBP, an algorithm adapted from maximum biplex search
+- MaxBC, an algorithm adapted from maximal biclique enumeration
+- MBC, a maximum biclique search algorithm, implemented for comparison
 
 ### Build:
 ```bash
@@ -13,7 +16,7 @@ cmake . && make
 ### Run:
 ##### Basic usage:
 ```bash
-bin/run -d <dataset> -k <integer> -q <size threshold> -a <algorithm: p/b/mdc> [options]
+bin/run -d <dataset> -k <integer> -q <size threshold> -a <algorithm: p/b/mdc/mbp/maxbc/mbc> [options]
 ```
 ### Help:
 ```bash
